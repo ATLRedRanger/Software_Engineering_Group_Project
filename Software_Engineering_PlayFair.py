@@ -82,8 +82,23 @@ def CheckRelationship(p1, p2):
     except:
         print("One or More Invalid Coordinates")
 
+#Gets user input
+def GetKeyInput():
+    
+    while True:
+        userKey = input("Please enter the Cipher Key: ").upper()
+        try:
+            if(userKey.isalpha()):
+                break
+            else:
+                print("Invalid Key: ", end = "")
+                raise TypeError
+        except TypeError:
+            print("Letters Only")
 
-key = CleanKey("APPLE")
+    return userKey
+
+key = CleanKey(GetKeyInput())
 PopulateGrid(RearrangeAlphabet(key, "F"))
 for row in grid:
     print(row)

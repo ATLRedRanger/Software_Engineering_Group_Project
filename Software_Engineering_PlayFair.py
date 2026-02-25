@@ -82,12 +82,13 @@ def CheckRelationship(p1, p2):
     except:
         print("One or More Invalid Coordinates")
 
-#Gets user input
+#Gets user input for cipher key
 def GetKeyInput():
     
     while True:
         userKey = input("Please enter the Cipher Key: ").upper()
         try:
+            userKey = userKey.replace(" ", "")
             if(userKey.isalpha()):
                 break
             else:
@@ -98,12 +99,74 @@ def GetKeyInput():
 
     return userKey
 
-key = CleanKey(GetKeyInput())
-PopulateGrid(RearrangeAlphabet(key, "F"))
-for row in grid:
-    print(row)
+#Gets user input for omitted letter
+def GetOmittedLetter():
+    while True:
+        omittedLetter = input("What letter would you like to omit? ").upper()
+        try:
+            if(omittedLetter.isalpha() and len(omittedLetter) == 1):
+                return omittedLetter
+            else:
+                print("Invalid Letter")
+                raise IndexError
+        except IndexError:
+            print("Please Enter One Letter.")
 
-pos1 = CharLookUp("E")
-pos2 = CharLookUp("B")
+#Gets the encrypted message
+#Removes spaces from message
+def GetEncryptedMessage():
+    while True:
+        message = input("What is the encrypted message? ")
+        try:
+            #print(f"Before: {message}")
+            message = message.replace(" ", "")
+            #print(f"After: {message}")
+            if(message.isalpha()):
+                return message.upper()
+            else:
+                raise TypeError
+        except TypeError:
+            print("Message must be all letters.")
 
-CheckRelationship(pos1, pos2)
+#Turns the message into a list of strings that are no longer than 2
+def DigramMessage(message: str):
+    modifiedText = ""
+    filler = "X"
+
+    for i in range(len(message) - 1):
+        modifiedText += message[i]
+        if message[i] == message[i+1]:
+            modifiedText += filler
+
+    modifiedText += message[-1]
+
+    return " ".join([modifiedText[j:j+2] for j in range(0, len(message), 2)])
+    
+
+
+
+def main():
+    #Get Key
+    key = CleanKey(GetKeyInput())
+
+    #Get Omitted Letter
+    oLetter = GetOmittedLetter()
+
+    #Get Encrypted Message
+    encryptedMessage = GetEncryptedMessage()
+    print(DigramMessage(encryptedMessage))
+
+    #Arrange 5x5 Grid using Key and Omitted Letter
+    PopulateGrid(RearrangeAlphabet(key, oLetter))
+    for row in grid:
+        print(row)
+
+    #Decrypt Message
+
+    pos1 = CharLookUp("E")
+    pos2 = CharLookUp("B")
+
+    CheckRelationship(pos1, pos2)
+
+if __name__ == "__main__":
+    main()

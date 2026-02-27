@@ -3,35 +3,37 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-public class DatabaseConnectionTest {
+public class DatabaseChallengePublicTest {
 
     public static void main(String[] args) {
 
         String url = "jdbc:mysql://localhost:3306/playfair_db";
-        String user = "root";         
-        String password = "Sunshine99@@";
+        String user = "root";
+        String password = ""; 
 
         try {
-            // Load MySQL  Driver
+            // Load MySQL JDBC driver
             Class.forName("com.mysql.cj.jdbc.Driver");
 
-            // Connect
+            // Connect to database
             Connection conn = DriverManager.getConnection(url, user, password);
-            System.out.println(" Connected to database.");
+            System.out.println("Connected to database.");
 
-            // Query
             Statement stmt = conn.createStatement();
+
+        
             ResultSet rs = stmt.executeQuery(
-                "SELECT id, cipher_key, omitted_letter, grid_string FROM cipher_grids"
+                "SELECT id, title, ciphertext, hint, omitted_letter FROM challenges_public"
             );
 
-            System.out.println("Results:");
+            System.out.println("\nResults :");
             while (rs.next()) {
                 System.out.println(
-                    rs.getInt("id") + " | " +
-                    rs.getString("cipher_key") + " | " +
-                    rs.getString("omitted_letter") + " | " +
-                    rs.getString("grid_string")
+                    "ID: " + rs.getInt("id") +
+                    " | Title: " + rs.getString("title") +
+                    " | Ciphertext: " + rs.getString("ciphertext") +
+                    " | Hint: " + rs.getString("hint") +
+                    " | Omitted: " + rs.getString("omitted_letter")
                 );
             }
 
@@ -41,7 +43,7 @@ public class DatabaseConnectionTest {
             conn.close();
 
         } catch (Exception e) {
-            System.out.println(" Database connection failed");
+            System.out.println("Database connection failed");
             e.printStackTrace();
         }
     }

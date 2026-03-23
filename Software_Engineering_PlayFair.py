@@ -4,8 +4,6 @@ import math
     
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-cutLetter = ""
-
 #@var key = The key for the cipher
 #We want to make sure that it has no duplicate letters
 def CleanKey(key: str):
@@ -70,24 +68,6 @@ def IsDiagonal(p1, p2):
         return True
     return False
 
-'''
-def CheckRelationship(p1, p2):
-    distance = 0
-    try:
-        if(SameColumn(p1, p2)):
-            distance = math.fabs(p1[0] - p2[0])
-            print(f"Same Column, Distance = {distance}")
-        elif(SameRow(p1, p2)):
-            distance = math.fabs(p1[1] - p2[1])
-            print(f"Same Row, Distance = {distance}")
-        else:
-            distance = math.fabs(p1[1] - p2[1])
-            print(f"Diagonal, Distance = {distance}")
-    except:
-        print("One or More Invalid Coordinates")
-    return distance
-'''  
-
 def CheckDistance(p1, p2):
     distance = 0
     try:
@@ -149,6 +129,17 @@ def GetEncryptedMessage():
                 raise TypeError
         except TypeError:
             print("Message must be all letters.")
+
+def ReplaceLettersInMessage(message, omittedLetter):
+    #In doing more research, playfair ciphers often replaces J with I
+    #What I am going to do is replace Js with Is and other letters with Xs 
+    replacement = "I" if omittedLetter == "J" else "X"
+    
+    #If the omitted letter is actually the replacement, use 'A'
+    if omittedLetter == replacement:
+        replacement = "A"
+        
+    return message.replace(omittedLetter, replacement)
 
 #Turns the message into a list of strings that are no longer than 2
 def DigramMessage(message: str):
@@ -236,8 +227,11 @@ def main():
     #Get Encrypted Message
     encryptedMessage = GetEncryptedMessage()
     
+    #Replace Letters If Necessary
+    fixedMessage = ReplaceLettersInMessage(encryptedMessage, oLetter)
+
     #Turn Encrypted Message Into a Digram
-    digram = DigramMessage(encryptedMessage)
+    digram = DigramMessage(fixedMessage)
     #print(digram[0][0])
 
     #Arrange 5x5 Grid using Key and Omitted Letter
@@ -248,33 +242,6 @@ def main():
     #Decrypt Message
     print(DecryptMessage(digram, grid))
 
-'''
-    pos1 = CharLookUp(digram[0][0], grid)
-    pos2 = CharLookUp(digram[0][1], grid)
-
-    distance = CheckDistance(pos1, pos2)
-    shift = ""
-    shift2 = ""
-    if(SameColumn(pos1, pos2)):
-        shift = ShiftDown(grid, pos1, distance)
-        shift2 = ShiftDown(grid, pos2, distance)
-    elif(SameRow(pos1, pos2)):
-        shift = ShiftRight(grid, pos1, distance)
-        shift2 = ShiftRight(grid, pos2, distance)
-    else:
-        shift = grid[pos1[0]][pos2[1]]
-        shift2 = grid[pos2[0]][pos1[1]]
-
-    
-
-    print(shift)
-    print(shift2)
-
-    print(f"Position 1: Row- {pos1[0]} Column- {pos1[1]}")
-    print(f"Position 2: Row- {pos2[0]} Column- {pos2[1]}")
-    print(f"Grid Position [{pos1[0]}][{pos1[1]}]: {grid[pos1[0]][pos1[1]]}")
-    print(f"Grid Position 1 Swapped [{pos1[0]}][{pos1[1]}]: {grid[pos1[0]][pos1[1]+4]}")
-'''
     
 if __name__ == "__main__":
     main()

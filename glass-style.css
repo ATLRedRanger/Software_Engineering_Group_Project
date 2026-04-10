@@ -1,0 +1,408 @@
+/* Root styles */
+.root {
+    -fx-background-color: transparent;
+    -fx-font-family: 'Segoe UI', 'Arial', sans-serif;
+}
+
+/* Background */
+.background {
+    -fx-background-color: linear-gradient(to bottom right, #021F2C, #0A2A38, #021520);
+}
+
+/* Main glass panel */
+.glass-panel {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-background-radius: 30;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 30, 0, 0, 10);
+    -fx-padding: 25;
+    -fx-border-color: rgba(21, 147, 152, 0.2);
+    -fx-border-width: 1;
+    -fx-border-radius: 30;
+}
+
+/* Section background */
+.section-bg {
+    -fx-background-color: rgba(2, 31, 44, 0.5);
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(21, 147, 152, 0.2);
+    -fx-border-width: 1;
+    -fx-border-radius: 20;
+}
+
+/* Titles */
+.glass-title {
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-alignment: center;
+    -fx-padding: 10 0;
+}
+
+.glass-subtitle {
+    -fx-font-size: 18px;
+    -fx-font-weight: 600;
+    -fx-text-fill: white;
+    -fx-padding: 5 0;
+}
+
+/* Input fields */
+.glass-input {
+    -fx-background-color: rgba(2, 31, 44, 0.7);
+    -fx-background-radius: 25;
+    -fx-border-color: rgba(21, 147, 152, 0.4);
+    -fx-border-width: 1.5;
+    -fx-border-radius: 25;
+    -fx-padding: 12 20;
+    -fx-font-size: 14px;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: rgba(255, 255, 255, 0.5);
+}
+
+.glass-input:focused {
+    -fx-border-color: #159398;
+}
+
+/* Combo box */
+.glass-combo {
+    -fx-background-color: rgba(2, 31, 44, 0.7);
+    -fx-background-radius: 25;
+    -fx-border-color: rgba(21, 147, 152, 0.4);
+    -fx-border-width: 1.5;
+    -fx-border-radius: 25;
+    -fx-text-fill: white;
+}
+
+.glass-combo .list-cell {
+    -fx-text-fill: white;
+    -fx-background-color: rgba(2, 31, 44, 0.9);
+}
+
+/* Text areas */
+.glass-text-area {
+    -fx-background-color: rgba(2, 31, 44, 0.7);
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(21, 147, 152, 0.4);
+    -fx-border-width: 1.5;
+    -fx-border-radius: 20;
+    -fx-padding: 10;
+    -fx-font-size: 14px;
+    -fx-text-fill: white;
+}
+
+.glass-text-area .content {
+    -fx-background-color: transparent;
+}
+
+/* Grid cells  */
+.glass-cell {
+    -fx-background-color: rgba(2, 31, 44, 0.7);
+    -fx-border-color: rgba(21, 147, 152, 0.4);
+    -fx-border-width: 2;
+    -fx-border-radius: 16;
+    -fx-background-radius: 16;
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-alignment: center;
+    -fx-min-width: 65;
+    -fx-min-height: 65;
+}
+
+.glass-cell:hover {
+    -fx-border-color: #159398;
+    -fx-cursor: hand;
+}
+
+/* Highlighted cell */
+.glass-cell.highlighted {
+    -fx-background-color: rgba(21, 147, 152, 0.5);
+    -fx-border-color: #159398;
+    -fx-border-width: 3;
+}
+
+/* Dragged cell - glow effect with opacity  */
+.glass-cell.dragged {
+    -fx-opacity: 0.85;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.7), 20, 0, 0, 6);
+    -fx-cursor: closed-hand;
+}
+
+/* correct feedback (green) */
+.glass-cell.cell-correct {
+    -fx-background-color: rgba(46, 204, 113, 0.3);
+    -fx-border-color: #27AE60;
+    -fx-border-width: 2;
+}
+
+/*  wrong feedback (red) */
+.glass-cell.cell-wrong {
+    -fx-background-color: rgba(231, 76, 60, 0.3);
+    -fx-border-color: #E74C3C;
+    -fx-border-width: 2;
+}
+
+/* Action buttons */
+.glass-action-button {
+    -fx-background-color: rgba(21, 147, 152, 0.8);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-padding: 10 20;
+    -fx-background-radius: 30;
+    -fx-cursor: hand;
+    -fx-border-color: rgba(255, 255, 255, 0.1);
+    -fx-border-width: 1;
+    -fx-border-radius: 30;
+}
+
+.glass-action-button:hover {
+    -fx-background-color: #159398;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.5), 15, 0, 0, 0);
+}
+
+.glass-action-button:pressed {
+    -fx-background-color: rgba(21, 147, 152, 0.9);
+}
+
+/* Window buttons */
+.window-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-padding: 5 12;
+    -fx-cursor: hand;
+    -fx-background-radius: 5;
+}
+
+.window-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.15);
+}
+
+.window-close:hover {
+    -fx-background-color: #E74C3C;
+}
+
+/* Toggle container */
+.toggle-container {
+    -fx-background-color: rgba(2, 31, 44, 0.8);
+    -fx-background-radius: 40;
+    -fx-padding: 5;
+    -fx-spacing: 5;
+}
+
+.toggle-option {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-padding: 10 30;
+    -fx-background-radius: 36;
+    -fx-cursor: hand;
+}
+
+.toggle-option.selected {
+    -fx-background-color: #159398;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.6), 15, 0, 0, 0);
+}
+
+.toggle-option:hover {
+    -fx-text-fill: #E3F4EB;
+}
+
+/* Hint label */
+.glass-hint {
+    -fx-font-size: 14px;
+    -fx-text-fill: white;
+    -fx-background-color: rgba(21, 147, 152, 0.15);
+    -fx-background-radius: 15;
+    -fx-padding: 10 15;
+    -fx-border-color: rgba(21, 147, 152, 0.3);
+    -fx-border-width: 1;
+    -fx-border-radius: 15;
+}
+
+/* ScrollPane */
+.scroll-pane {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+}
+
+.scroll-pane .viewport {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+}
+
+/* Glass Scrollbar */
+.scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 10;
+}
+
+.scroll-bar:vertical .track {
+    -fx-background-color: rgba(2, 31, 44, 0.5);
+    -fx-background-radius: 5;
+}
+
+.scroll-bar:vertical .thumb {
+    -fx-background-color: #159398;
+    -fx-background-radius: 5;
+    -fx-opacity: 0.6;
+}
+
+.scroll-bar:vertical .thumb:hover {
+    -fx-opacity: 0.9;
+}
+
+/* Alert dialog */
+.dialog-pane {
+    -fx-background-color: rgba(2, 31, 44, 0.95);
+    -fx-background-radius: 25;
+    -fx-border-color: #159398;
+    -fx-border-width: 2;
+    -fx-border-radius: 25;
+}
+
+.dialog-pane .content {
+    -fx-text-fill: white;
+}
+
+.dialog-pane .button {
+    -fx-background-color: rgba(21, 147, 152, 0.8);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 8 25;
+    -fx-background-radius: 25;
+    -fx-cursor: hand;
+}
+
+.dialog-pane .button:hover {
+    -fx-background-color: #159398;
+}
+
+/* Navigation Bar */
+.nav-bar {
+    -fx-background-color: rgba(2, 31, 44, 0.6);
+    -fx-background-radius: 50;
+    -fx-padding: 10 20;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 15, 0, 0, 5);
+    -fx-border-color: rgba(21, 147, 152, 0.3);
+    -fx-border-width: 1;
+    -fx-border-radius: 50;
+}
+
+.app-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #159398;
+    -fx-padding: 5 10;
+}
+
+.app-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #159398;
+    -fx-padding: 5 10;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.5), 10, 0, 0, 0);
+}
+
+/* Tab Buttons */
+.tab-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #BDC7D0;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-padding: 8 20;
+    -fx-background-radius: 30;
+    -fx-cursor: hand;
+}
+
+.tab-button:hover {
+    -fx-text-fill: #E3F4EB;
+    -fx-background-color: rgba(21, 147, 152, 0.2);
+}
+
+.tab-button.tab-active {
+    -fx-background-color: #159398;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.4), 10, 0, 0, 0);
+}
+
+/* Landing Page Style */
+.landing-button {
+    -fx-background-color: rgba(21, 147, 152, 0.8);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 16px;
+    -fx-padding: 12 32;
+    -fx-background-radius: 40;
+    -fx-cursor: hand;
+    -fx-border-color: rgba(255, 255, 255, 0.1);
+    -fx-border-width: 1;
+    -fx-border-radius: 40;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.4), 15, 0, 0, 0);
+}
+
+.landing-button:hover {
+    -fx-background-color: #159398;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.6), 20, 0, 0, 5);
+}
+
+.landing-button:pressed {
+    -fx-background-color: rgba(21, 147, 152, 0.9);
+}
+
+/* Content Area */
+.content-area {
+    -fx-padding: 10;
+}
+
+/* Glass Card */
+
+/* Glass Card */
+.glass-card {
+    -fx-background-color: rgba(25, 35, 50, 0.6);
+    -fx-background-radius: 32px;
+    -fx-border-color: rgba(21, 147, 152, 0.35);
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 32px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 25, 0, 0, 8);
+    -fx-cursor: hand;
+}
+
+.glass-card:hover {
+    -fx-border-color: #159398;
+    -fx-background-color: rgba(30, 45, 65, 0.7);
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.5), 30, 0, 0, 12);
+}
+
+/*  TitledPane */
+.titled-pane {
+    -fx-text-fill: #E3F4EB;
+    -fx-font-weight: bold;
+}
+
+.titled-pane > .title {
+    -fx-background-color: rgba(21, 147, 152, 0.15);
+    -fx-background-radius: 20 20 0 0;
+    -fx-border-color: rgba(21, 147, 152, 0.3);
+    -fx-border-width: 1;
+    -fx-padding: 12 18;
+}
+
+.titled-pane > .content {
+    -fx-background-color: rgba(2, 31, 44, 0.5);
+    -fx-background-radius: 0 0 20 20;
+    -fx-border-color: rgba(21, 147, 152, 0.3);
+    -fx-border-width: 0 1 1 1;
+}
+
+.glass-cell.highlighted {
+    -fx-background-color: rgba(21, 147, 152, 0.5);
+    -fx-border-color: #159398;
+    -fx-border-width: 3;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.9), 25, 0, 0, 10);
+}

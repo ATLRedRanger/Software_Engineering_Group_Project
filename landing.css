@@ -1,0 +1,235 @@
+/* landing.css: Landing Page Styles */
+
+/* DIALOG STYLES  */
+
+.dialog-pane {
+    -fx-background-color: rgba(2, 31, 44, 0.95);
+    -fx-background-radius: 25;
+    -fx-border-color: #159398;
+    -fx-border-width: 2;
+    -fx-border-radius: 25;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.4), 25, 0, 0, 0);
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: rgba(21, 147, 152, 0.15);
+    -fx-background-radius: 23 23 0 0;
+    -fx-border-color: rgba(21, 147, 152, 0.3);
+    -fx-border-width: 0 0 1 0;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.dialog-pane .content {
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-family: 'Segoe UI', 'Inter', 'Arial', sans-serif;
+}
+
+.dialog-pane .label {
+    -fx-text-fill: white;
+}
+
+.dialog-pane .text-field {
+    -fx-background-color: rgba(2, 31, 44, 0.8);
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(21, 147, 152, 0.5);
+    -fx-border-width: 1.5;
+    -fx-border-radius: 20;
+    -fx-text-fill: white;
+    -fx-padding: 10 15;
+    -fx-font-size: 14px;
+    -fx-prompt-text-fill: rgba(255, 255, 255, 0.5);
+}
+
+.dialog-pane .text-field:focused {
+    -fx-border-color: #159398;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.3), 12, 0, 0, 0);
+}
+
+.dialog-pane .button {
+    -fx-background-color: rgba(21, 147, 152, 0.8);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 8 25;
+    -fx-background-radius: 25;
+    -fx-cursor: hand;
+    -fx-border-color: rgba(255, 255, 255, 0.1);
+    -fx-border-width: 1;
+    -fx-border-radius: 25;
+    -fx-font-size: 13px;
+}
+
+.dialog-pane .button:hover {
+    -fx-background-color: #159398;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.4), 10, 0, 0, 0);
+}
+
+.dialog-pane .button:pressed {
+    -fx-background-color: rgba(21, 147, 152, 0.6);
+}
+
+.dialog-pane .button:cancel {
+    -fx-background-color: rgba(189, 199, 208, 0.2);
+    -fx-border-color: rgba(189, 199, 208, 0.3);
+}
+
+.dialog-pane .button:cancel:hover {
+    -fx-background-color: rgba(189, 199, 208, 0.35);
+}
+
+.dialog-pane .button:default {
+    -fx-background-color: #159398;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.5), 10, 0, 0, 0);
+}
+
+.dialog-pane .graphic-container {
+    -fx-padding: 10;
+}
+
+.dialog-pane .choice-box {
+    -fx-background-color: rgba(2, 31, 44, 0.8);
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(21, 147, 152, 0.5);
+    -fx-border-radius: 20;
+}
+
+.dialog-pane .choice-box .label {
+    -fx-text-fill: white;
+}
+
+.dialog-pane .scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.dialog-pane .progress-bar {
+    -fx-background-color: rgba(2, 31, 44, 0.6);
+    -fx-background-radius: 10;
+}
+
+.dialog-pane .progress-bar .bar {
+    -fx-background-color: #159398;
+    -fx-background-radius: 10;
+}
+
+/* LANDING PAGE GLASS CARD STYLES */
+
+.glass-card {
+    -fx-background-color: rgba(30, 40, 55, 0.55);
+    -fx-background-radius: 32px;
+    -fx-border-color: rgba(21, 147, 152, 0.3);
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 32px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 20, 0, 0, 5);
+    -fx-cursor: hand;
+}
+
+.glass-card:hover {
+    -fx-border-color: #159398;
+    -fx-background-color: rgba(40, 55, 75, 0.6);
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.5), 25, 0, 0, 10);
+}
+/* LANDING BUTTON STYLES  */
+
+.landing-button {
+    -fx-background-color: rgba(21, 147, 152, 0.8);
+    -fx-text-fill: white;
+    -fx-font-family: "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 16px;
+    -fx-font-weight: 600;
+    -fx-padding: 12px 32px;
+    -fx-background-radius: 40px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.4), 20, 0, 0, 5);
+}
+
+.landing-button:hover {
+    -fx-background-color: #159398;
+    -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.6), 25, 0, 0, 8);
+}
+
+.landing-button:pressed {
+    -fx-background-color: rgba(21, 147, 152, 0.9);
+}
+
+/* TRANSPARENT SCROLLPANE STYLES */
+
+.transparent-scroll {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+}
+
+.transparent-scroll .viewport {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+}
+
+/* Custom Scrollbar */
+.transparent-scroll .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 10px;
+}
+
+.transparent-scroll .scroll-bar:vertical .track {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-radius: 5px;
+}
+
+.transparent-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: #159398;
+    -fx-background-radius: 5px;
+    -fx-opacity: 0.5;
+}
+
+.transparent-scroll .scroll-bar:vertical .thumb:hover {
+    -fx-opacity: 0.8;
+}
+
+.transparent-scroll .scroll-bar:vertical .increment-button,
+.transparent-scroll .scroll-bar:vertical .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.transparent-scroll .scroll-bar:vertical .increment-arrow,
+.transparent-scroll .scroll-bar:vertical .decrement-arrow {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+/* TEXT STYLES */
+
+.landing-title {
+    -fx-font-family: "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-weight: bold;
+    -fx-font-size: 72px;
+    -fx-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 10, 0, 0, 2);
+}
+
+.landing-subtitle {
+    -fx-font-family: "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-weight: 300;
+    -fx-font-size: 72px;
+    -fx-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 8, 0, 0, 1);
+}
+
+.landing-description {
+    -fx-font-family: "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-weight: 300;
+    -fx-font-size: 18px;
+    -fx-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 5, 0, 0, 1);
+}
+
+.landing-small {
+    -fx-font-family: "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-weight: 300;
+    -fx-font-size: 13px;
+    -fx-fill: white;
+}

@@ -1,13 +1,12 @@
 package com.playfair.ui;
 
+import com.playfair.backend.ChallengeRecord;
+import com.playfair.backend.ChallengeRepository;
 import com.playfair.backend.PlayfairDecrypt;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 import javafx.scene.input.*;
 import java.util.*;
 
@@ -18,8 +17,9 @@ public class ChallengeMode {
     private Label[][] gridLabels;
     private Label encodedMessageLabel;
     private Label hintLabel;
-    private TextField keyInput;
-    private Button submitKeyBtn;
+    private Label cipherKeyLabel;
+    private Label decodedLabel;
+    private Button startBtn;
     private Button hint2Btn;
     private Button checkGridBtn;
     private Button submitDecodedBtn;
@@ -46,120 +46,101 @@ public class ChallengeMode {
     private int sourceRow = -1, sourceCol = -1;
     private boolean[][] highlightedCells = new boolean[5][5];
 
+    private int lastChallengeId = -1;
+    private String currentDifficulty = "easy";
 
-    // FALLBACK SYSTEM PUZZLES (TEMPORARY PUZZLES)
-    //For UI Testing
+    private final ChallengeRepository repo = new ChallengeRepository();
 
-    private List<SimplePuzzle> puzzles = new ArrayList<>();
-    private int puzzleIndex = 0;
-
-    // Temporary puzzle data structure
-    private class SimplePuzzle {
-        String encoded;
-        String key;
-        String hint1;
-        String hint2;
-        String decoded;
-
-        SimplePuzzle(String encoded, String key, String hint1, String hint2, String decoded) {
-            this.encoded = encoded;
-            this.key = key;
-            this.hint1 = hint1;
-            this.hint2 = hint2;
-            this.decoded = decoded;
-        }
-    }
-
-    //constructor loads fallback puzzles, builds ui
     public ChallengeMode() {
-        loadPuzzles();
         createChallengeView();
         loadRandomPuzzle();
         updatePhase(1);
     }
-    
-//temporary puzzles
-    private void loadPuzzles() {
-        puzzles.add(new SimplePuzzle("BM OD ZB", "PLAYFAIR", "Starts with P", "Contains LAY", "HIDETH"));
-        puzzles.add(new SimplePuzzle("BM OD ZB XD", "PLAYFAIR", "Starts with P", "Contains LAY", "HIDETHEG"));
-        puzzles.add(new SimplePuzzle("YT RS TU XA", "APPLE", "Starts with A", "Ends with E", "HELLOWORLD"));
-        puzzles.add(new SimplePuzzle("XQ PL MR YZ", "ZEBRA", "Starts with Z", "Has E and A", "TESTMESX"));
-        puzzles.add(new SimplePuzzle("KX JE YU RE BE ZW EH E", "APPLE", "5-letter fruit", "A common red fruit", "APPLE"));
-        puzzles.add(new SimplePuzzle("AB CD EF GH IJ", "SECRET", "Think about row shifts", "Classic Playfair rule", "SECRET"));
+
+    public void setDifficulty(String difficulty) {
+        this.currentDifficulty = difficulty;
     }
 
     private void loadRandomPuzzle() {
-        Random rand = new Random();
-        SimplePuzzle p = puzzles.get(rand.nextInt(puzzles.size()));
+        try {
+            ChallengeRecord record = repo.getRandomChallengeByDifficulty(currentDifficulty, lastChallengeId);
 
-        currentEncodedMessage = p.encoded;
-        correctKey = p.key;
-        hint1 = p.hint1;
-        hint2 = p.hint2;
-        decodedAnswer = p.decoded;
-        
-//generates grid using backend playfairdecrpyt
-        String cleanKeyStr = correctKey.toUpperCase().replaceAll("\\s+", "");
-        List<Character> cleanKey = new ArrayList<>();
-        for (char ch : cleanKeyStr.toCharArray()) {
-            if (!cleanKey.contains(ch)) cleanKey.add(ch);
-        }
-
-        String rearrangedAlpha = PlayfairDecrypt.RearrangeAlphabet(cleanKey, "J");
-        correctGrid = PlayfairDecrypt.PopulateGrid(rearrangedAlpha);
-
-        encodedMessageLabel.setText("🔐 Encoded: " + currentEncodedMessage);
-        hintLabel.setText("📌 Hint 1: " + hint1);
-
-        //reset state for new puzzle
-        wrongAttempts = 0;
-        gridWrongAttempts = 0;
-        hint2Shown = false;
-        decodedTextArea.clear();
-
-        // Clear all grid styles
-        for (int r = 0; r < 5; r++) {
-            for (int c = 0; c < 5; c++) {
-                highlightedCells[r][c] = false;
-                resetGridCellStyle(r, c);
-                gridLabels[r][c].getStyleClass().removeAll("highlighted", "cell-correct", "cell-wrong");
+            if (record == null) {
+                showAlert("No Challenges", "No challenges found for difficulty: " + currentDifficulty);
+                return;
             }
-        }
 
-        if (skipToDecodeBtn != null) {
-            skipToDecodeBtn.setVisible(false);
+            lastChallengeId = record.getId();
+            currentEncodedMessage = record.getCiphertext();
+            hint1 = record.getHint1();
+            hint2 = record.getHint2();
+            decodedAnswer = record.getAnswerKey();
+
+            // Fetch the cipher key from cipher_grids
+            String gridKey = repo.getGridKey(record.getGridId());
+            if (gridKey == null) {
+                showAlert("Error", "Could not find grid key for this challenge.");
+                return;
+            }
+            correctKey = gridKey;
+
+            // Build the correct grid
+            String omitted = record.getOmittedLetter() != null ? record.getOmittedLetter() : "J";
+            String cleanKeyStr = correctKey.toUpperCase().replaceAll("\\s+", "");
+            List<Character> cleanKey = new ArrayList<>();
+            for (char ch : cleanKeyStr.toCharArray()) {
+                if (!cleanKey.contains(ch)) cleanKey.add(ch);
+            }
+            String rearrangedAlpha = PlayfairDecrypt.RearrangeAlphabet(cleanKey, omitted);
+            correctGrid = PlayfairDecrypt.PopulateGrid(rearrangedAlpha);
+
+            // Update UI labels
+            encodedMessageLabel.setText("🔐 Encoded: " + currentEncodedMessage);
+            cipherKeyLabel.setText("🔑 Cipher Key: " + correctKey);
+            hintLabel.setText("📌 Hint 1: " + hint1);
+
+            // Reset state
+            wrongAttempts = 0;
+            gridWrongAttempts = 0;
+            hint2Shown = false;
+            decodedTextArea.clear();
+
+            for (int r = 0; r < 5; r++)
+                for (int c = 0; c < 5; c++) {
+                    highlightedCells[r][c] = false;
+                    resetGridCellStyle(r, c);
+                    gridLabels[r][c].getStyleClass().removeAll("highlighted", "cell-correct", "cell-wrong");
+                }
+
+            if (skipToDecodeBtn != null) skipToDecodeBtn.setVisible(false);
+
+        } catch (Exception e) {
+            showAlert("Database Error", "Failed to load puzzle: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
-    //grid styling
     private void resetGridCellStyle(int row, int col) {
         gridLabels[row][col].setStyle(
-                "-fx-border-color: rgba(21, 147, 152, 0.4); " +
-                        "-fx-border-width: 2; " +
-                        "-fx-background-color: rgba(2, 31, 44, 0.7); " +
-                        "-fx-text-fill: white; " +
-                        "-fx-alignment: center; " +
-                        "-fx-font-size: 20px; " +
-                        "-fx-font-weight: bold; " +
-                        "-fx-background-radius: 16; " +
-                        "-fx-border-radius: 16;"
+            "-fx-border-color: rgba(21, 147, 152, 0.4); " +
+            "-fx-border-width: 2; " +
+            "-fx-background-color: rgba(2, 31, 44, 0.7); " +
+            "-fx-text-fill: white; " +
+            "-fx-alignment: center; " +
+            "-fx-font-size: 20px; " +
+            "-fx-font-weight: bold; " +
+            "-fx-background-radius: 16; " +
+            "-fx-border-radius: 16;"
         );
     }
 
     private void clearAllTempStyles() {
-        for (int r = 0; r < 5; r++) {
+        for (int r = 0; r < 5; r++)
             for (int c = 0; c < 5; c++) {
                 resetGridCellStyle(r, c);
                 gridLabels[r][c].getStyleClass().removeAll("highlighted", "cell-correct", "cell-wrong");
             }
-        }
     }
-
-    //UI for challenge mode screen
-    // Creates title, How to Play section, instruction label, encoded message
-    // Builds 5x5 draggable grid container
-    // Adds hint label, key input, buttons (SUBMIT KEY, GET HINT 2, CHECK GRID, SKIP TO DECODE)
-    // Adds decoded message section, SUBMIT DECODED, SHOW ANSWER, NEXT PUZZLE buttons
 
     private void createChallengeView() {
         challengeView = new VBox(15);
@@ -170,19 +151,20 @@ public class ChallengeMode {
         Label title = new Label("CHALLENGE MODE");
         title.getStyleClass().add("glass-title");
 
+        // How to play section
         VBox howToContent = new VBox(10);
         howToContent.setPadding(new Insets(10));
         Label howToTitle = new Label("How to Play Playfair Challenge:");
         howToTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #E3F4EB; -fx-font-size: 14px;");
         String[] steps = {
-                "1. Guess the cipher key using the hints below",
-                "2. You have 2 hints available",
-                "3. Once key is correct, the grid will appear SCRAMBLED",
-                "4. DRAG AND DROP letters to rearrange them correctly",
-                "5. Click 'CHECK GRID' when you think it's correct",
-                "6. After 3 wrong attempts, 'SKIP TO DECODE' button appears",
-                "7. Pairs will light up in TEAL",
-                "8. Type the decoded message and submit to complete!"
+            "1. You are given the cipher key and an encoded message",
+            "2. Use the hints to figure out what the decoded message is",
+            "3. Click START to see the scrambled grid",
+            "4. DRAG AND DROP letters to arrange the grid correctly",
+            "5. Click 'CHECK GRID' when you think it's correct",
+            "6. After 3 wrong attempts, 'SKIP TO DECODE' button appears",
+            "7. Pairs will light up in TEAL to help you decode",
+            "8. Type the decoded message and submit to complete!"
         };
         VBox stepsBox = new VBox(5);
         for (String step : steps) {
@@ -196,7 +178,7 @@ public class ChallengeMode {
         howToPlayPane.setExpanded(false);
         howToPlayPane.getStyleClass().add("glass-panel");
 
-        instructionLabel = new Label("1. Guess the cipher key using the hints below");
+        instructionLabel = new Label("Use the key and hints to decode the message!");
         instructionLabel.getStyleClass().add("glass-subtitle");
         instructionLabel.setMaxWidth(Double.MAX_VALUE);
         instructionLabel.setAlignment(Pos.CENTER);
@@ -206,6 +188,14 @@ public class ChallengeMode {
         encodedMessageLabel.setMaxWidth(Double.MAX_VALUE);
         encodedMessageLabel.setAlignment(Pos.CENTER);
 
+        // Cipher key display label
+        cipherKeyLabel = new Label();
+        cipherKeyLabel.getStyleClass().add("glass-subtitle");
+        cipherKeyLabel.setMaxWidth(Double.MAX_VALUE);
+        cipherKeyLabel.setAlignment(Pos.CENTER);
+        cipherKeyLabel.setStyle("-fx-text-fill: #159398; -fx-font-weight: bold; -fx-font-size: 16px;");
+
+        // Grid
         VBox gridContainer = new VBox(10);
         gridContainer.setAlignment(Pos.CENTER);
 
@@ -240,19 +230,14 @@ public class ChallengeMode {
         hintLabel.setAlignment(Pos.CENTER);
         hintLabel.setWrapText(true);
 
-        HBox keyBox = new HBox(10);
-        keyBox.setAlignment(Pos.CENTER);
-        keyInput = new TextField();
-        keyInput.setPromptText("Enter key guess");
-        keyInput.setPrefWidth(250);
-        keyInput.getStyleClass().add("glass-input");
-        submitKeyBtn = new Button("SUBMIT KEY");
-        submitKeyBtn.getStyleClass().addAll("glass-action-button");
-        keyBox.getChildren().addAll(keyInput, submitKeyBtn);
+        // START button
+        startBtn = new Button("▶ START");
+        startBtn.getStyleClass().addAll("glass-action-button");
+        startBtn.setOnAction(e -> updatePhase(3));
 
         hint2Btn = new Button("🔍 GET HINT 2");
         hint2Btn.getStyleClass().addAll("glass-action-button");
-        hint2Btn.setVisible(false);
+        hint2Btn.setVisible(true);
 
         checkGridBtn = new Button("✅ CHECK GRID");
         checkGridBtn.getStyleClass().addAll("glass-action-button");
@@ -267,43 +252,40 @@ public class ChallengeMode {
             updatePhase(4);
         });
 
-        // Decoded message section 
-        Label decodedLabel = new Label("Decoded Message:");
+        // Decoded message section
+        decodedLabel = new Label("Decoded Message:");
         decodedLabel.getStyleClass().add("glass-subtitle");
         decodedLabel.setVisible(false);
-        decodedLabel.setTranslateY(-40);  
 
         decodedTextArea = new TextArea();
-        decodedTextArea.setPromptText("Enter the decoded message here (spaces optional)");
+        decodedTextArea.setPromptText("Type the decoded message here (spaces optional)");
         decodedTextArea.setPrefRowCount(3);
         decodedTextArea.setWrapText(true);
         decodedTextArea.getStyleClass().add("glass-text-area");
         decodedTextArea.setVisible(false);
         decodedTextArea.setMaxWidth(500);
-        decodedTextArea.setTranslateY(-200);  
 
         submitDecodedBtn = new Button("🎯 SUBMIT DECODED");
         submitDecodedBtn.getStyleClass().addAll("glass-action-button");
         submitDecodedBtn.setVisible(false);
-        submitDecodedBtn.setTranslateY(-150);  
 
         showAnswerBtn = new Button("💡 SHOW ANSWER");
         showAnswerBtn.getStyleClass().addAll("glass-action-button");
         showAnswerBtn.setVisible(false);
-        showAnswerBtn.setTranslateY(-150);  
 
-        nextPuzzleBtn = new Button("NEXT PUZZLE");
+        nextPuzzleBtn = new Button("NEXT PUZZLE ▶");
         nextPuzzleBtn.getStyleClass().addAll("glass-action-button");
         nextPuzzleBtn.setVisible(false);
-        nextPuzzleBtn.setTranslateY(-300);  
 
         challengeView.getChildren().addAll(
-                title, howToPlayPane, instructionLabel, encodedMessageLabel, gridContainer,
-                hintLabel, keyBox, hint2Btn, checkGridBtn, skipToDecodeBtn,
-                decodedLabel, decodedTextArea, submitDecodedBtn, showAnswerBtn, nextPuzzleBtn
+            title, howToPlayPane, instructionLabel,
+            encodedMessageLabel, cipherKeyLabel,
+            gridContainer, hintLabel,
+            startBtn, hint2Btn, checkGridBtn, skipToDecodeBtn,
+            decodedLabel, decodedTextArea,
+            submitDecodedBtn, showAnswerBtn, nextPuzzleBtn
         );
 
-        submitKeyBtn.setOnAction(e -> checkKey());
         hint2Btn.setOnAction(e -> showHint2());
         checkGridBtn.setOnAction(e -> checkGrid());
         submitDecodedBtn.setOnAction(e -> checkDecoded());
@@ -315,7 +297,6 @@ public class ChallengeMode {
 
     private void handleDragStart(MouseEvent e, Label label, int row, int col) {
         if (currentPhase != 3 || label.getText().equals("?")) return;
-        
         clearAllTempStyles();
         draggedLabel = label;
         sourceRow = row;
@@ -349,11 +330,12 @@ public class ChallengeMode {
             for (int c = 0; c < 5; c++) {
                 Label l = gridLabels[r][c];
                 if (l == draggedLabel) continue;
-                double cx = l.getLocalToSceneTransform().getTx() + l.getWidth()/2;
-                double cy = l.getLocalToSceneTransform().getTy() + l.getHeight()/2;
+                double cx = l.getLocalToSceneTransform().getTx() + l.getWidth() / 2;
+                double cy = l.getLocalToSceneTransform().getTy() + l.getHeight() / 2;
                 if (Math.hypot(dropX - cx, dropY - cy) < 50) {
                     target = l;
-                    tr = r; tc = c;
+                    tr = r;
+                    tc = c;
                     break;
                 }
             }
@@ -382,60 +364,35 @@ public class ChallengeMode {
     private void updateLabelStyle(Label label, int row, int col) {
         label.getStyleClass().removeAll("glass-cell", "highlighted", "dragged");
         label.getStyleClass().add("glass-cell");
-        if (isHighlighted(row, col)) {
-            label.getStyleClass().add("highlighted");
-        }
+        if (isHighlighted(row, col)) label.getStyleClass().add("highlighted");
     }
 
     private boolean isHighlighted(int row, int col) {
         return highlightedCells[row][col];
     }
 
-    // PHASE 1: GUESS THE KEY
-    // Compares user's key guess with correctKey
-    // If correct → moves to Phase 3 (Arrange Grid)
-    // If wrong → shows HINT 2 button
-
-    private void checkKey() {
-        String guess = keyInput.getText().trim().toUpperCase().replaceAll("\\s+", "");
-        String expected = correctKey.toUpperCase().replaceAll("\\s+", "");
-
-        if (guess.equals(expected)) {
-            currentPhase = 3;
-            updatePhase(3);
-        } else {
-            if (!hint2Shown) hint2Btn.setVisible(true);
-            showAlert("Incorrect Key", "Try again or click HINT 2 for another clue!");
-        }
-    }
-
     private void showHint2() {
         hintLabel.setText("📌 Hint 1: " + hint1 + "\n📌 Hint 2: " + hint2);
         hint2Btn.setVisible(false);
         hint2Shown = true;
-        showAlert("Hint 2 Revealed", "Use this hint to guess the key!");
     }
 
-    // PHASE MANAGEMENT (Switches between 1, 3, 4, 5)
-    // Phase 1: Guess key (blank grid, hint 1, key input)
-    // Phase 3: Arrange grid (scrambled letters, drag-drop, CHECK GRID button)
-    // Phase 4: Decode message (highlighted pairs, decoded text area, SUBMIT DECODED)
-    // Phase 5: Complete (success message, NEXT PUZZLE button)
-
+    // PHASE MANAGEMENT
     private void updatePhase(int phase) {
         currentPhase = phase;
-        Label dragInstruction = (Label)((VBox)gridPane.getParent()).getChildren().get(1);
+        Label dragInstruction = (Label) ((VBox) gridPane.getParent()).getChildren().get(1);
 
-        switch(phase) {
+        switch (phase) {
             case 1:
-                instructionLabel.setText("1. Guess the cipher key using the hints below");
+                instructionLabel.setText("Use the key and hints to decode the message!");
                 hintLabel.setText("📌 Hint 1: " + hint1);
-                keyInput.clear();
-                keyInput.setDisable(false);
-                submitKeyBtn.setDisable(false);
-                hint2Btn.setVisible(false);
+                cipherKeyLabel.setVisible(true);
+                startBtn.setVisible(true);
+                hint2Btn.setVisible(true);
+                hint2Btn.setDisable(false);
                 checkGridBtn.setVisible(false);
                 skipToDecodeBtn.setVisible(false);
+                decodedLabel.setVisible(false);
                 decodedTextArea.setVisible(false);
                 submitDecodedBtn.setVisible(false);
                 showAnswerBtn.setVisible(false);
@@ -449,13 +406,20 @@ public class ChallengeMode {
                 break;
 
             case 3:
-                instructionLabel.setText("2. Drag and drop letters to arrange the grid correctly");
-                hintLabel.setText("✅ Key accepted! Now arrange the grid correctly.");
-                keyInput.setDisable(true);
-                submitKeyBtn.setDisable(true);
+                instructionLabel.setText("Arrange the grid correctly using the key: " + correctKey);
+                hintLabel.setText(hint2Shown
+                    ? "📌 Hint 1: " + hint1 + "\n📌 Hint 2: " + hint2
+                    : "📌 Hint 1: " + hint1);
+                startBtn.setVisible(false);
+                hint2Btn.setVisible(true);
                 checkGridBtn.setVisible(true);
                 dragInstruction.setVisible(true);
                 skipToDecodeBtn.setVisible(false);
+                decodedLabel.setVisible(false);
+                decodedTextArea.setVisible(false);
+                submitDecodedBtn.setVisible(false);
+                showAnswerBtn.setVisible(false);
+                nextPuzzleBtn.setVisible(false);
                 gridWrongAttempts = 0;
                 clearAllTempStyles();
 
@@ -471,47 +435,50 @@ public class ChallengeMode {
                 break;
 
             case 4:
-                instructionLabel.setText("3. Type the decoded message below using the highlighted pairs");
-                hintLabel.setText("");
+                instructionLabel.setText("Use the highlighted pairs to decode the message!");
+                hintLabel.setText(hint2Shown
+                    ? "📌 Hint 1: " + hint1 + "\n📌 Hint 2: " + hint2
+                    : "📌 Hint 1: " + hint1);
+                startBtn.setVisible(false);
+                hint2Btn.setVisible(true);
                 checkGridBtn.setVisible(false);
                 skipToDecodeBtn.setVisible(false);
+                decodedLabel.setVisible(true);
                 decodedTextArea.setVisible(true);
                 submitDecodedBtn.setVisible(true);
-                showAnswerBtn.setVisible(true);
+                showAnswerBtn.setVisible(false);
+                nextPuzzleBtn.setVisible(false);
                 dragInstruction.setVisible(false);
                 decodedTextArea.clear();
-
-                //  highlight pairs
                 highlightPairs();
                 break;
 
             case 5:
                 instructionLabel.setText("🎉 Challenge Complete! Great job!");
+                startBtn.setVisible(false);
+                hint2Btn.setVisible(false);
+                checkGridBtn.setVisible(false);
+                skipToDecodeBtn.setVisible(false);
+                decodedLabel.setVisible(false);
                 decodedTextArea.setVisible(false);
                 submitDecodedBtn.setVisible(false);
                 showAnswerBtn.setVisible(false);
-                skipToDecodeBtn.setVisible(false);
                 nextPuzzleBtn.setVisible(true);
                 clearAllTempStyles();
-
-                for (int r = 0; r < 5; r++) {
+                for (int r = 0; r < 5; r++)
                     for (int c = 0; c < 5; c++) {
                         highlightedCells[r][c] = false;
                         gridLabels[r][c].getStyleClass().removeAll("highlighted");
                     }
-                }
-
-                showAlert("Success!", "You solved the puzzle! Click NEXT PUZZLE to continue.");
+                showAlert("🎉 Success!", "You decoded the message! Click NEXT PUZZLE to continue.");
                 break;
         }
     }
 
-    // PHASE 3: CHECK GRID ARRANGEMENT
+    // PHASE 3: CHECK GRID
     private void checkGrid() {
-        boolean correct = true;
-
-        // Clear any previous temp styles
         clearAllTempStyles();
+        boolean correct = true;
 
         for (int r = 0; r < 5; r++) {
             for (int c = 0; c < 5; c++) {
@@ -519,43 +486,47 @@ public class ChallengeMode {
                 String expected = String.valueOf(correctGrid[r][c]);
                 if (!text.equals(expected)) {
                     correct = false;
-                    gridLabels[r][c].setStyle("-fx-background-color: rgba(231, 76, 60, 0.3); -fx-border-color: #E74C3C; -fx-border-width: 2; -fx-font-size: 20px; -fx-font-weight: bold;");
+                    gridLabels[r][c].setStyle(
+                        "-fx-background-color: rgba(231, 76, 60, 0.3); " +
+                        "-fx-border-color: #E74C3C; -fx-border-width: 2; " +
+                        "-fx-font-size: 20px; -fx-font-weight: bold;"
+                    );
                 } else {
-                    gridLabels[r][c].setStyle("-fx-background-color: rgba(46, 204, 113, 0.3); -fx-border-color: #27AE60; -fx-border-width: 2; -fx-font-size: 20px; -fx-font-weight: bold;");
+                    gridLabels[r][c].setStyle(
+                        "-fx-background-color: rgba(46, 204, 113, 0.3); " +
+                        "-fx-border-color: #27AE60; -fx-border-width: 2; " +
+                        "-fx-font-size: 20px; -fx-font-weight: bold;"
+                    );
                 }
             }
         }
 
         if (correct) {
-            showAlert("Grid Correct!", "Moving to next phase...");
+            showAlert("Grid Correct!", "Moving to decode phase...");
             updatePhase(4);
         } else {
             gridWrongAttempts++;
             int remaining = 3 - gridWrongAttempts;
-
             if (gridWrongAttempts >= 3) {
                 skipToDecodeBtn.setVisible(true);
-                showAlert("Skip Available", "You've used 3 attempts. Click 'SKIP TO DECODE' to move to the decoding phase.");
+                showAlert("Skip Available", "3 attempts used. Click SKIP TO DECODE to move on.");
             } else {
-                showAlert("Incorrect Grid", "Some letters are wrong. You have " + remaining + " attempt(s) left before you can skip.");
+                showAlert("Incorrect Grid", "Some letters are wrong. " + remaining + " attempt(s) left.");
             }
         }
     }
-    // PHASE 4: HIGHLIGHT PAIRS & DECODE
+
+    // PHASE 4: HIGHLIGHT PAIRS
     private void highlightPairs() {
         String[] pairs = currentEncodedMessage.split(" ");
 
-        // remove all existing highlighted styles
-        for (int r = 0; r < 5; r++) {
+        for (int r = 0; r < 5; r++)
             for (int c = 0; c < 5; c++) {
                 highlightedCells[r][c] = false;
                 gridLabels[r][c].getStyleClass().removeAll("highlighted");
-                // Reset to default style
                 resetGridCellStyle(r, c);
             }
-        }
 
-        //  apply new highlights
         for (String pair : pairs) {
             if (pair.length() == 2) {
                 int[] p1 = findLetter(pair.charAt(0));
@@ -588,29 +559,25 @@ public class ChallengeMode {
             wrongAttempts++;
             if (wrongAttempts >= 3) {
                 showAnswerBtn.setVisible(true);
-                showAlert("Incorrect", "You've used all attempts. Click SHOW ANSWER to see the correct answer.");
+                showAlert("Incorrect", "3 attempts used. Click SHOW ANSWER to reveal it.");
             } else {
-                showAlert("Incorrect", "Wrong. You have " + (3 - wrongAttempts) + " attempt(s) left.");
+                showAlert("Incorrect", "Wrong! " + (3 - wrongAttempts) + " attempt(s) left.");
             }
         }
     }
 
     private void showAnswer() {
-        showAlert("Answer", "The correct decoded message is: " + decodedAnswer);
+        showAlert("Answer", "The decoded message is: " + decodedAnswer);
     }
 
     // PHASE 5: NEXT PUZZLE
     private void nextPuzzle() {
-        // Clear all styles and highlighted cells before loading new puzzle
         clearAllTempStyles();
-
-        for (int r = 0; r < 5; r++) {
+        for (int r = 0; r < 5; r++)
             for (int c = 0; c < 5; c++) {
                 highlightedCells[r][c] = false;
                 gridLabels[r][c].getStyleClass().removeAll("highlighted");
             }
-        }
-
         loadRandomPuzzle();
         currentPhase = 1;
         wrongAttempts = 0;
@@ -618,7 +585,7 @@ public class ChallengeMode {
         hint2Shown = false;
         updatePhase(1);
     }
-    // ALERT DIALOG
+
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);

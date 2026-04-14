@@ -1,8 +1,8 @@
 package com.playfair.ui;
 
-import com.playfair.backend.CipherGrid;
 import com.playfair.backend.PlayfairDecrypt;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -15,12 +15,15 @@ import java.util.List;
 
 public class PlayfairUI extends Application {
 
-    // UI  for the main cipher tool
+    // UI components for cipher tool
     private TextField keyField;
     private ComboBox<String> missingLetterCombo;
     private TextArea inputArea;
     private TextArea outputArea;
     private Label[][] gridLabels = new Label[5][5];
+
+    // Current grid state
+    private char[][] currentGrid;
 
     // Navigation
     private BorderPane mainLayout;
@@ -40,6 +43,10 @@ public class PlayfairUI extends Application {
     private VBox challengeView;
     private ChallengeMode challengeMode;
 
+    // FIX: Reusable ScrollPanes — created once, never recreated
+    private ScrollPane cipherScrollPane;
+    private ScrollPane challengeScrollPane;
+
     // Toggle buttons
     private Label cipherToggle;
     private Label challengeToggle;
@@ -48,8 +55,7 @@ public class PlayfairUI extends Application {
     private HBox userInfoBox;
     private Label usernameLabel;
     private Label streakLabel;
-   
-//Application entry point
+
     @Override
     public void start(Stage stage) {
         this.primaryStage = stage;
@@ -113,7 +119,6 @@ public class PlayfairUI extends Application {
         generateGrid();
     }
 
-   // WINDOW CONTROLS (Minimize, Maximize, Close)
     private HBox createWindowControls(Stage stage) {
         HBox controls = new HBox(8);
         controls.setAlignment(Pos.CENTER_RIGHT);
@@ -141,7 +146,6 @@ public class PlayfairUI extends Application {
         return controls;
     }
 
-    // NAVIGATION BAR (App Title + Home/Tool/Help Tabs)
     private HBox createNavigationBar() {
         HBox navBar = new HBox();
         navBar.setAlignment(Pos.CENTER);
@@ -188,13 +192,12 @@ public class PlayfairUI extends Application {
     private void setActiveTab(Button activeButton, HBox tabButtons) {
         for (javafx.scene.Node node : tabButtons.getChildren()) {
             if (node instanceof Button) {
-                Button btn = (Button) node;
-                btn.getStyleClass().remove("tab-active");
+                ((Button) node).getStyleClass().remove("tab-active");
             }
         }
         activeButton.getStyleClass().add("tab-active");
     }
- // Creates LandingPage and sets action for Enter button to switch to Tool tab
+
     private void createHomeContent() {
         landingPage = new LandingPage();
         landingPage.setOnEnterAction(() -> {
@@ -208,21 +211,15 @@ public class PlayfairUI extends Application {
         homeContent = landingPage.getView();
     }
 
-
-// Creates top bar with centered toggle and right-aligned user info
-        // CIPHER MODE and CHALLENGE MODE toggle buttons
-        // Wraps Cipher Mode in ScrollPane
-   
     private void createToolContent() {
         toolContent = new VBox(15);
         toolContent.setAlignment(Pos.TOP_CENTER);
         toolContent.setPadding(new Insets(10));
         toolContent.getStyleClass().add("glass-panel");
 
-        
         HBox topBar = new HBox(20);
         topBar.setAlignment(Pos.CENTER);
-        topBar.setPadding(new Insets(10, 20, 20, 20));
+        topBar.setPadding(new Insets(10, 20, 10, 20));
         topBar.setMaxWidth(Double.MAX_VALUE);
 
         Region leftSpacer = new Region();
@@ -231,7 +228,7 @@ public class PlayfairUI extends Application {
         HBox toggleContainer = new HBox(4);
         toggleContainer.setAlignment(Pos.CENTER);
         toggleContainer.getStyleClass().add("toggle-container");
-        toggleContainer.setTranslateX(80); 
+        toggleContainer.setTranslateX(80);
 
         cipherToggle = new Label("CIPHER MODE");
         cipherToggle.getStyleClass().addAll("toggle-option", "selected");
@@ -273,13 +270,12 @@ public class PlayfairUI extends Application {
 
         userInfoBox.getChildren().addAll(userIcon, usernameLabel, separator, streakLabel);
 
-        userInfoBox.setOnMouseEntered(e -> {
-            userInfoBox.setStyle("-fx-background-color: rgba(21, 147, 152, 0.2); -fx-background-radius: 30; -fx-padding: 8 18; -fx-border-color: rgba(21, 147, 152, 0.5); -fx-border-width: 1; -fx-border-radius: 30;");
-        });
-        userInfoBox.setOnMouseExited(e -> {
-            userInfoBox.setStyle("-fx-background-color: rgba(2, 31, 44, 0.5); -fx-background-radius: 30; -fx-padding: 8 18; -fx-border-color: rgba(21, 147, 152, 0.3); -fx-border-width: 1; -fx-border-radius: 30;");
-        });
-
+        userInfoBox.setOnMouseEntered(e ->
+                userInfoBox.setStyle("-fx-background-color: rgba(21, 147, 152, 0.2); -fx-background-radius: 30; -fx-padding: 8 18; -fx-border-color: rgba(21, 147, 152, 0.5); -fx-border-width: 1; -fx-border-radius: 30;")
+        );
+        userInfoBox.setOnMouseExited(e ->
+                userInfoBox.setStyle("-fx-background-color: rgba(2, 31, 44, 0.5); -fx-background-radius: 30; -fx-padding: 8 18; -fx-border-color: rgba(21, 147, 152, 0.3); -fx-border-width: 1; -fx-border-radius: 30;")
+        );
         userInfoBox.setOnMouseClicked(e -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("User Info");
@@ -294,45 +290,43 @@ public class PlayfairUI extends Application {
         challengeMode = new ChallengeMode();
         challengeView = challengeMode.getView();
 
-       //scrollpane for cipher mode
-        
-        ScrollPane cipherScrollPane = new ScrollPane();
-        cipherScrollPane.setContent(cipherView);
-        cipherScrollPane.setFitToWidth(true);
-        cipherScrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        cipherScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        cipherScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        cipherScrollPane = buildScrollPane(cipherView);
+        challengeScrollPane = buildScrollPane(challengeView);
+
+        challengeMode.setScrollToTopAction(() ->
+                Platform.runLater(() -> challengeScrollPane.setVvalue(0.0))
+        );
 
         toolContent.getChildren().addAll(topBar, cipherScrollPane);
     }
 
+    private ScrollPane buildScrollPane(javafx.scene.Node content) {
+        ScrollPane sp = new ScrollPane(content);
+        sp.setFitToWidth(true);
+        sp.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        return sp;
+    }
+
     private void showCipherMode() {
-        toolContent.getChildren().remove(1);
-        
-        ScrollPane cipherScrollPane = new ScrollPane();
-        cipherScrollPane.setContent(cipherView);
-        cipherScrollPane.setFitToWidth(true);
-        cipherScrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        cipherScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        cipherScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        toolContent.getChildren().add(cipherScrollPane);
+        replaceContentPane(cipherScrollPane);
+        Platform.runLater(() -> cipherScrollPane.setVvalue(0.0));
     }
 
     private void showChallengeMode() {
-        toolContent.getChildren().remove(1);
-        ScrollPane scrollPane = new ScrollPane();
-        scrollPane.setContent(challengeView);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        toolContent.getChildren().add(scrollPane);
+        replaceContentPane(challengeScrollPane);
+        Platform.runLater(() -> challengeScrollPane.setVvalue(0.0));
     }
 
+    private void replaceContentPane(ScrollPane newPane) {
+        if (toolContent.getChildren().size() > 1) {
+            toolContent.getChildren().set(1, newPane);
+        } else {
+            toolContent.getChildren().add(newPane);
+        }
+    }
 
-    // Shows how to use Cipher Mode and Challenge Mode
-        // Explains Playfair cipher rules
-   
     private void createHelpContent() {
         helpContent = new VBox(20);
         helpContent.setAlignment(Pos.TOP_CENTER);
@@ -345,19 +339,11 @@ public class PlayfairUI extends Application {
         Label instructions = new Label(
                 "How to Use the Playfair Cipher Tool:\n\n" +
                         "1. Enter a cipher key (e.g., PLAYFAIR, APPLE)\n" +
-                        "2. Select a missing letter (usually J - I and J share a cell)\n" +
-                        "3. Click 'Generate Grid' to create the 5x5 cipher matrix\n" +
-                        "4. Type your message in the Message box\n" +
-                        "5. Click 'ENCRYPT' to encode or 'DECRYPT' to decode\n\n" +
-                        "Challenge Mode:\n" +
-                        "- Guess the cipher key using the hints\n" +
-                        "- Drag and drop letters to arrange the grid correctly\n" +
-                        "- Use highlighted pairs to decode the message\n" +
-                        "- You have 3 attempts before the answer is revealed\n\n" +
-                        "Playfair Cipher Rules:\n" +
-                        "- Same row: Shift left (decrypt) / right (encrypt)\n" +
-                        "- Same column: Shift up (decrypt) / down (encrypt)\n" +
-                        "- Different row/col: Swap corners of the rectangle"
+                        "2. Select a missing letter (usually J)\n" +
+                        "3. Click 'Generate Grid'\n" +
+                        "4. Type your message\n" +
+                        "5. Click 'ENCRYPT' or 'DECRYPT'\n\n" +
+                        "Note: Encryption is coming soon!"
         );
         instructions.setStyle("-fx-text-fill: #BDC7D0; -fx-font-size: 14px; -fx-wrap-text: true;");
 
@@ -365,27 +351,21 @@ public class PlayfairUI extends Application {
     }
 
     private void showHome() {
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(homeContent);
+        contentArea.getChildren().setAll(homeContent);
     }
 
     private void showTool() {
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(toolContent);
+        contentArea.getChildren().setAll(toolContent);
     }
 
     private void showHelp() {
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(helpContent);
+        contentArea.getChildren().setAll(helpContent);
     }
 
-// Cipher Mode UI Threecolumn layout: Input, Grid , Output
-        // Bottom row: ENCRYPT, DECRYPT, CLEAR buttons
-   
     private VBox createCipherView() {
-        VBox cipherView = new VBox(20);
-        cipherView.setAlignment(Pos.TOP_CENTER);
-        cipherView.getStyleClass().add("glass-panel");
+        VBox view = new VBox(20);
+        view.setAlignment(Pos.TOP_CENTER);
+        view.getStyleClass().add("glass-panel");
 
         HBox contentLayout = new HBox(20);
         contentLayout.setAlignment(Pos.CENTER);
@@ -397,16 +377,10 @@ public class PlayfairUI extends Application {
         contentLayout.getChildren().addAll(inputSection, gridSection, outputSection);
         HBox buttonSection = createButtonSection();
 
-        cipherView.getChildren().addAll(contentLayout, buttonSection);
-        return cipherView;
+        view.getChildren().addAll(contentLayout, buttonSection);
+        return view;
     }
 
- // Cipher Key text field
-        // Missing Letter dropdown (J, X, Q, Y, Z)
-        // Message text area
-        // Generate Grid button
-
-   
     private VBox createInputSection() {
         VBox vbox = new VBox(15);
         vbox.setPadding(new Insets(10));
@@ -441,7 +415,7 @@ public class PlayfairUI extends Application {
 
         Button generateBtn = new Button("Generate Grid");
         generateBtn.setMaxWidth(Double.MAX_VALUE);
-        generateBtn.getStyleClass().addAll("glass-action-button");
+        generateBtn.getStyleClass().add("glass-action-button");
         generateBtn.setOnAction(e -> generateGrid());
 
         vbox.getChildren().addAll(
@@ -454,9 +428,6 @@ public class PlayfairUI extends Application {
         return vbox;
     }
 
-// 5x5 grid of glass cells
-   // Each cell starts with "?" until grid is generated
-   
     private VBox createGridSection() {
         VBox vbox = new VBox(15);
         vbox.setAlignment(Pos.CENTER);
@@ -475,7 +446,6 @@ public class PlayfairUI extends Application {
                 Label label = new Label("?");
                 label.setMinSize(70, 70);
                 label.getStyleClass().add("glass-cell");
-
                 gridLabels[row][col] = label;
                 gridPane.add(label, col, row);
             }
@@ -485,7 +455,6 @@ public class PlayfairUI extends Application {
         return vbox;
     }
 
-   // Read-only text area showing encryption/decryption results
     private VBox createOutputSection() {
         VBox vbox = new VBox(15);
         vbox.setPadding(new Insets(10));
@@ -506,10 +475,6 @@ public class PlayfairUI extends Application {
         return vbox;
     }
 
-// ENCRYPT button (placeholder - need backend)
-        // DECRYPT button (working)
-        // CLEAR button (resets all fields)
-   
     private HBox createButtonSection() {
         HBox hbox = new HBox(15);
         hbox.setAlignment(Pos.CENTER);
@@ -517,52 +482,43 @@ public class PlayfairUI extends Application {
 
         Button encryptBtn = new Button("ENCRYPT");
         encryptBtn.setPrefWidth(110);
-        encryptBtn.getStyleClass().addAll("glass-action-button");
+        encryptBtn.getStyleClass().add("glass-action-button");
         encryptBtn.setOnAction(e -> encryptMessage());
 
         Button decryptBtn = new Button("DECRYPT");
         decryptBtn.setPrefWidth(110);
-        decryptBtn.getStyleClass().addAll("glass-action-button");
+        decryptBtn.getStyleClass().add("glass-action-button");
         decryptBtn.setOnAction(e -> decryptMessage());
 
         Button clearBtn = new Button("CLEAR");
         clearBtn.setPrefWidth(110);
-        clearBtn.getStyleClass().addAll("glass-action-button");
+        clearBtn.getStyleClass().add("glass-action-button");
         clearBtn.setOnAction(e -> clearAll());
 
         hbox.getChildren().addAll(encryptBtn, decryptBtn, clearBtn);
         return hbox;
     }
 
-   // GRID GENERATION (Calls Backend)
-   // Takes key and missing letter, calls CipherGrid methods
-        // Updates the 5x5 grid display
-   
+    // ========== BACKEND METHOD CALLS ONLY ==========
+    // These methods ONLY call PlayfairDecrypt methods
+
     private void generateGrid() {
-        String key = keyField.getText().trim().toUpperCase();
+        String key = keyField.getText().trim().toUpperCase().replaceAll("\\s+", "");
         String missingLetter = missingLetterCombo.getValue();
 
-        if (key.isEmpty()) {
-            showAlert("Error", "Please enter a key");
-            return;
-        }
-
-        if (missingLetter == null || missingLetter.isEmpty()) {
-            showAlert("Error", "Please select a missing letter");
+        if (key.isEmpty() || missingLetter == null) {
+            showAlert("Error", "Please enter a key and select a missing letter");
             return;
         }
 
         try {
-            List<Character> cleanKey = CipherGrid.CleanKey(key);
-            String rearrangedAlpha = CipherGrid.RearrangeAlphabet(cleanKey, missingLetter);
-            CipherGrid.PopulateGrid(rearrangedAlpha);
-            String[][] grid = CipherGrid.getGrid();
+            List<Character> cleanKey = PlayfairDecrypt.CleanKey(key);
+            String rearrangedAlpha = PlayfairDecrypt.RearrangeAlphabet(cleanKey, missingLetter);
+            currentGrid = PlayfairDecrypt.PopulateGrid(rearrangedAlpha);
 
             for (int row = 0; row < 5; row++) {
                 for (int col = 0; col < 5; col++) {
-                    if (grid[row][col] != null) {
-                        gridLabels[row][col].setText(grid[row][col]);
-                    }
+                    gridLabels[row][col].setText(String.valueOf(currentGrid[row][col]));
                 }
             }
 
@@ -570,69 +526,61 @@ public class PlayfairUI extends Application {
 
         } catch (Exception e) {
             showAlert("Error", "Error generating grid: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
-// ENCRYPT MESSAGE (Placeholder - need Backend)
-   
     private void encryptMessage() {
-        String message = inputArea.getText().trim().toUpperCase();
+        String message = inputArea.getText().trim().toUpperCase().replaceAll("[^A-Z]", "");
+
         if (message.isEmpty()) {
             showAlert("Error", "Please enter a message to encrypt");
             return;
         }
 
-        message = message.replaceAll("[^A-Z]", "");
-        outputArea.setText("Encrypted: " + message);
+        if (currentGrid == null) {
+            showAlert("Error", "Please generate a grid first");
+            return;
+        }
+
+        // NEEDS EncryptMessage() - currently not available
+        outputArea.setText("⚠️ Encryption: needs EncryptMessage() method to PlayfairDecrypt");
     }
 
-// Calls PlayfairDecrypt methods to decrypt the message
-        // Formats output with spaces every 2 letters
-
-   
     private void decryptMessage() {
-        String message = inputArea.getText().trim().toUpperCase();
+        String message = inputArea.getText().trim().toUpperCase().replaceAll("\\s+", "").replaceAll("[^A-Z]", "");
+
         if (message.isEmpty()) {
             showAlert("Error", "Please enter a message to decrypt");
             return;
         }
 
-        String processedMessage = message.replaceAll("\\s+", "").replaceAll("[^A-Z]", "");
+        if (currentGrid == null) {
+            showAlert("Error", "Please generate a grid first");
+            return;
+        }
 
         try {
-            String key = keyField.getText().trim().toUpperCase();
-            String missingLetter = missingLetterCombo.getValue();
-            key = key.replaceAll("\\s+", "");
+            List<String> digrams = PlayfairDecrypt.DigramMessage(message);
+            String decrypted = PlayfairDecrypt.DecryptMessage(digrams, currentGrid);
 
-            List<Character> cleanKey = PlayfairDecrypt.CleanKey(key);
-            String rearrangedAlpha = PlayfairDecrypt.RearrangeAlphabet(cleanKey, missingLetter);
-            char[][] grid = PlayfairDecrypt.PopulateGrid(rearrangedAlpha);
-
-            for (int row = 0; row < 5; row++) {
-                for (int col = 0; col < 5; col++) {
-                    gridLabels[row][col].setText(String.valueOf(grid[row][col]));
-                }
-            }
-
-            List<String> digrams = PlayfairDecrypt.DigramMessage(processedMessage);
-            String decrypted = PlayfairDecrypt.DecryptMessage(digrams, grid);
-
-            String formattedDecrypted = "";
+            StringBuilder formattedDecrypted = new StringBuilder();
             for (int i = 0; i < decrypted.length(); i += 2) {
                 if (i + 2 <= decrypted.length()) {
-                    formattedDecrypted += decrypted.substring(i, i + 2) + " ";
+                    formattedDecrypted.append(decrypted, i, i + 2).append(" ");
+                } else {
+                    formattedDecrypted.append(decrypted.substring(i));
                 }
             }
 
-            outputArea.setText("Decrypted: " + formattedDecrypted.trim());
+            outputArea.setText("Decrypted: " + formattedDecrypted.toString().trim());
 
         } catch (Exception e) {
             showAlert("Error", "Decryption failed: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
-  // CLEAR ALL FIELDS
-   
     private void clearAll() {
         keyField.setText("APPLE");
         missingLetterCombo.setValue("J");
@@ -641,7 +589,6 @@ public class PlayfairUI extends Application {
         generateGrid();
     }
 
-   // ALERT DIALOG
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);

@@ -9,7 +9,6 @@ public class ChallengeRecord {
     private final String difficulty;
     private final String omittedLetter;
     private final String answerKey;
-    private final int gridId;
     private final boolean active;
 
     public ChallengeRecord(
@@ -21,7 +20,6 @@ public class ChallengeRecord {
             String difficulty,
             String omittedLetter,
             String answerKey,
-            int gridId,
             boolean active
     ) {
         this.id = id;
@@ -32,47 +30,16 @@ public class ChallengeRecord {
         this.difficulty = difficulty;
         this.omittedLetter = omittedLetter;
         this.answerKey = answerKey;
-        this.gridId = gridId;
         this.active = active;
     }
 
-    public int getId() {
-        return id;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public String getCiphertext() {
-        return ciphertext;
-    }
-
-    public String getHint1() {
-        return hint1;
-    }
-
-    public String getHint2() {
-        return hint2;
-    }
-
-    public String getDifficulty() {
-        return difficulty;
-    }
-
-    public String getOmittedLetter() {
-        return omittedLetter;
-    }
-
-    public String getAnswerKey() {
-        return answerKey;
-    }
-
-    public int getGridId() {
-        return gridId;
-    }
-
-    public boolean isActive() {
-        return active;
-    }
+    public int getId()               { return id; }
+    public String getTitle()         { return title; }
+    public String getCiphertext()    { return ciphertext; }
+    public String getHint1()         { return hint1; }
+    public String getHint2()         { return hint2; }
+    public String getDifficulty()    { return difficulty; }
+    public String getOmittedLetter() { return omittedLetter; }
+    public String getAnswerKey()     { return answerKey; }
+    public boolean isActive()        { return active; }
 }

@@ -76,10 +76,10 @@ public class ChallengeMode {
             hint2 = record.getHint2();
             decodedAnswer = record.getAnswerKey();
 
-            // Fetch the cipher key from cipher_grids
-            String gridKey = repo.getGridKey(record.getGridId());
+            // Fetch a random grid key since challenges no longer link to a specific grid
+            String gridKey = repo.getRandomGridKey();
             if (gridKey == null) {
-                showAlert("Error", "Could not find grid key for this challenge.");
+                showAlert("Error", "No grid keys found in database.");
                 return;
             }
             correctKey = gridKey;

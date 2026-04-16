@@ -1,327 +1,203 @@
 package com.playfair.backend;
 
 import java.util.*;
-import java.lang.Math;
 
 //Vincent - I am making a 5x5 grid so that I can use coordinates
-// to get and store values. 
-
+// to get and store values.
 public class PlayfairDecrypt {
 
     static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    static String cutLetter = "";
-
-    //@var key = The key for the cipher
-    //We want to make sure that it has no duplicate letters
+    // CleanKey ensures no duplicate letters are in the list
     public static List<Character> CleanKey(String key) {
         List<Character> cleanList = new ArrayList<>();
-        for(char letter : key.toCharArray()){
-            if(!cleanList.contains(letter)){
+        for (char letter : key.toCharArray()) {
+            if (!cleanList.contains(letter)) {
                 cleanList.add(letter);
             }
         }
         return cleanList;
     }
 
-    //@var key = The list of chars used at the beginning of the new alpha
-    //@var cutLetter = Because the grid is 5x5 and there are 26 letters, we need to cut a letter from the alphabet.
-    //Usually these are letters like x, y, z, sometimes j, etc.
-    //We can populate multiple grids using common cut letters and en/decode the ciphers that way
-    //The key goes in the front and then the rest of the alphabet follows after
-    public static String RearrangeAlphabet(List<Character> key, String cutLetter){
-        String useableAlphabet = ALPHABET.replace(cutLetter, "");
-        StringBuilder stringKey = new StringBuilder();
-        for(char c : key){
-            stringKey.append(c);
-        }
-        String keyString = stringKey.toString().replace(cutLetter, "");
+    // Fixed logic to ensure the cutLetter is never added to the grid
+    public static String RearrangeAlphabet(List<Character> key, String cutLetter) {
+        char charToSkip = cutLetter.charAt(0);
+        StringBuilder sbKey = new StringBuilder();
 
-        StringBuilder remaining = new StringBuilder();
-        for(char c : useableAlphabet.toCharArray()){
-            if(!key.contains(c)){
-                remaining.append(c);
+        // 1. Add key letters ONLY if they aren't the omitted letter
+        for (char c : key) {
+            if (c != charToSkip && sbKey.indexOf(String.valueOf(c)) == -1) {
+                sbKey.append(c);
             }
         }
 
-        String newAlpha = keyString + remaining.toString();
-        return newAlpha;
+        // 2. Add remaining alphabet letters (excluding omitted)
+        String usableAlphabet = ALPHABET.replace(cutLetter, "");
+        for (char c : usableAlphabet.toCharArray()) {
+            if (sbKey.indexOf(String.valueOf(c)) == -1) {
+                sbKey.append(c);
+            }
+        }
+        return sbKey.toString();
     }
 
-    //@var cleanedAlpha = This is the 25 letters of the alphabet we're going to use to set up the 5x5 grid
-    //Loops through all the open positions and uses a formula to place the letter in the correct spot
-    public static char[][] PopulateGrid(String cleanedAlpha){
+    public static char[][] PopulateGrid(String cleanedAlpha) {
         char[][] grid = new char[5][5];
-
-        for(int row = 0; row < 5; row++){
-            for(int column = 0; column < 5; column++){
+        for (int row = 0; row < 5; row++) {
+            for (int column = 0; column < 5; column++) {
                 grid[row][column] = cleanedAlpha.charAt(row * 5 + column);
             }
         }
-
         return grid;
     }
 
-    //This function loops through the grid to give the coordinates of the letter you're looking for. 
-    public static int[] CharLookUp(char character, char[][] grid){
-        boolean found = false;
-        for(int row = 0; row < grid.length; row++){
-            for(int column = 0; column < grid[row].length; column++){
-                if(character == grid[row][column]){
-                    found = true;
+    public static int[] CharLookUp(char character, char[][] grid) {
+        for (int row = 0; row < 5; row++) {
+            for (int column = 0; column < 5; column++) {
+                if (character == grid[row][column]) {
                     return new int[]{row, column};
                 }
             }
         }
-        if(found == false){
-            System.out.println("Char not found");
-        }
         return null;
     }
 
-    public static boolean SameRow(int[] p1, int[] p2){
-        if(p1[0] == p2[0]){
-            return true;
-        }
-        return false;
+    public static boolean SameRow(int[] p1, int[] p2) {
+        return p1[0] == p2[0];
     }
 
-    public static boolean SameColumn(int[] p1, int[] p2){
-        if(p1[1] == p2[1]){
-            return true;
-        }
-        return false;
+    public static boolean SameColumn(int[] p1, int[] p2) {
+        return p1[1] == p2[1];
     }
 
-    //For Diagonals, I want the distance between columns, because I don't care if they're true diagonals. I only char if they are "diagonal"
-    //So I'd need to check if the columns and rows are different, then get the distance between the two.
-    public static boolean IsDiagonal(int[] p1, int[] p2){
-        if(p1[0] != p2[0] && p1[1] != p2[1]){
-            return true;
-        }
-        return false;
-    }
-
-    /*
-    public static double CheckRelationship(int[] p1, int[] p2){
-        double distance = 0;
-        try{
-            if(SameColumn(p1, p2)){
-                distance = Math.abs(p1[0] - p2[0]);
-                System.out.println("Same Column, Distance = " + distance);
-            }
-            else if(SameRow(p1, p2)){
-                distance = Math.abs(p1[1] - p2[1]);
-                System.out.println("Same Row, Distance = " + distance);
-            }
-            else{
-                distance = Math.abs(p1[1] - p2[1]);
-                System.out.println("Diagonal, Distance = " + distance);
-            }
-        }
-        catch(Exception e){
-            System.out.println("One or More Invalid Coordinates");
-        }
-        return distance;
-    }
-    */
-
-    public static double CheckDistance(int[] p1, int[] p2){
-        double distance = 0;
-        try{
-            if(SameColumn(p1, p2)){
-                distance = Math.abs(p1[0] - p2[0]);
-                System.out.println("Same Column, Distance = " + distance);
-            }
-            else if(SameRow(p1, p2)){
-                distance = Math.abs(p1[1] - p2[1]);
-                System.out.println("Same Row, Distance = " + distance);
-            }
-            else{
-                distance = Math.abs(p1[1] - p2[1]);
-                System.out.println("Diagonal, Distance = " + distance);
-            }
-        }
-        catch(Exception e){
-            System.out.println("One or More Invalid Coordinates");
-        }
-        return distance;
-    }
-
-    //Gets user input for cipher key
-    public static String GetKeyInput(){
-        Scanner scanner = new Scanner(System.in);
-        while(true){
+    // Input Handling - Fixed Scanner to not close prematurely in loops
+    public static String GetKeyInput(Scanner scanner) {
+        while (true) {
             System.out.print("Please enter the Cipher Key: ");
-            String userKey = scanner.nextLine().toUpperCase();
-            try{
-                userKey = userKey.replace(" ", "");
-                if(userKey.matches("[A-Z]+")){
-                    return userKey;
-                }
-                else{
-                    System.out.print("Invalid Key: ");
-                    throw new Exception();
-                }
-            }
-            catch(Exception e){
-                System.out.println("Letters Only");
-            }
+            String userKey = scanner.nextLine().toUpperCase().replace(" ", "");
+            if (userKey.matches("[A-Z]+")) return userKey;
+            System.out.println("Invalid Key: Letters Only");
         }
     }
 
-    //Gets user input for omitted letter
-    public static String GetOmittedLetter(){
-        Scanner scanner = new Scanner(System.in);
-        while(true){
+    public static String GetOmittedLetter(Scanner scanner) {
+        while (true) {
             System.out.print("What letter would you like to omit? ");
-            String omittedLetter = scanner.nextLine().toUpperCase();
-            try{
-                if(omittedLetter.matches("[A-Z]") && !omittedLetter.equals("X")){
-                    return omittedLetter;
-                }
-                else{
-                    System.out.println("Invalid Letter");
-                    throw new Exception();
-                }
+            String input = scanner.nextLine().toUpperCase().trim();
+            if (input.length() == 1 && input.matches("[A-Z]") && !input.equals("X")) {
+                return input;
             }
-            catch(Exception e){
-                System.out.println("Please Enter One Letter.");
-            }
+            System.out.println("Invalid Letter: Enter one letter (not X).");
         }
     }
 
-    //Gets the encrypted message
-    //Removes spaces from message
-    public static String GetEncryptedMessage(){
-        Scanner scanner = new Scanner(System.in);
-        while(true){
+    public static String GetEncryptedMessage(Scanner scanner) {
+        while (true) {
             System.out.print("What is the encrypted message? ");
-            String message = scanner.nextLine();
-            try{
-                message = message.replace(" ", "");
-                if(message.matches("[a-zA-Z]+")){
-                    return message.toUpperCase();
-                }
-                else{
-                    throw new Exception();
-                }
-            }
-            catch(Exception e){
-                System.out.println("Message must be all letters.");
-            }
+            String message = scanner.nextLine().toUpperCase().replace(" ", "");
+            if (message.matches("[A-Z]+")) return message;
+            System.out.println("Message must be all letters.");
         }
     }
 
-    //Turns the message into a list of strings that are no longer than 2
-    public static List<String> DigramMessage(String message){
-        String modifiedText = "";
-        String filler = "X";
+    // Ensures any instance of the omitted letter in the message is replaced
+    public static String ReplaceLettersInMessage(String message, String omittedLetter) {
+        // Standard Playfair: If J is missing, use I. Otherwise, use X.
+        String replacement = omittedLetter.equals("J") ? "I" : "X";
+        if (omittedLetter.equals(replacement)) replacement = "A";
+
+        return message.replace(omittedLetter, replacement);
+    }
+
+    public static List<String> DigramMessage(String message) {
+        StringBuilder modified = new StringBuilder();
+        char filler = 'X';
+
         int i = 0;
+        while (i < message.length()) {
+            char first = message.charAt(i);
+            modified.append(first);
 
-        while(i < message.length()){
-            modifiedText += message.charAt(i);
-
-            if(i + 1 < message.length()){
-                if(message.charAt(i) == message.charAt(i+1)){
-                    modifiedText += filler;
-                    i += 1;
-                }
-                else{
-                    modifiedText += message.charAt(i+1);
+            if (i + 1 < message.length()) {
+                char second = message.charAt(i + 1);
+                if (first == second) {
+                    // If letters are the same, add filler and process 'second' in the next pair
+                    modified.append(filler);
+                    i++;
+                } else {
+                    // If letters are different, add the second and move past both
+                    modified.append(second);
                     i += 2;
                 }
+            } else {
+                // Only one letter left, add filler to complete the pair
+                modified.append(filler);
+                i++;
             }
-            else{
-                modifiedText += filler;
-                i += 1;
-            }
         }
 
-        if(modifiedText.length() % 2 != 0){
-            modifiedText += filler;
+        List<String> result = new ArrayList<>();
+        for (int j = 0; j < modified.length(); j += 2) {
+            result.add(modified.substring(j, j + 2));
         }
-
-        List<String> digrams = new ArrayList<>();
-        for(int j = 0; j < modifiedText.length(); j += 2){
-            digrams.add(modifiedText.substring(j, j+2));
-        }
-
-        return digrams;
+        return result;
     }
 
-    public static String DecryptMessage(List<String> digram, char[][] grid){
-        int[] pos1;
-        int[] pos2;
-        List<String> decryptedMessage = new ArrayList<>();
+    // Change the name to processMessage and add the 'distance' parameter
+    public static String ProcessMessage(List<String> digrams, char[][] grid, int distance) {
+        StringBuilder result = new StringBuilder();
 
-        int distance = -1;
+        for (String pair : digrams) {
+            int[] pos1 = CharLookUp(pair.charAt(0), grid);
+            int[] pos2 = CharLookUp(pair.charAt(1), grid);
 
-        for(String tup : digram){
-            if(tup.length() < 2){
-                continue;
+            if (pos1[0] == pos2[0]) { // Same Row
+                result.append(ShiftRight(grid, pos1, distance));
+                result.append(ShiftRight(grid, pos2, distance));
+            } else if (pos1[1] == pos2[1]) { // Same Column
+                result.append(ShiftDown(grid, pos1, distance));
+                result.append(ShiftDown(grid, pos2, distance));
+            } else { // Rectangle
+                result.append(grid[pos1[0]][pos2[1]]);
+                result.append(grid[pos2[0]][pos1[1]]);
             }
-
-            pos1 = CharLookUp(tup.charAt(0), grid);
-            pos2 = CharLookUp(tup.charAt(1), grid);
-
-            String shift = "";
-            String shift2 = "";
-
-            if(SameColumn(pos1, pos2)){
-                shift = String.valueOf(ShiftDown(grid, pos1, distance));
-                shift2 = String.valueOf(ShiftDown(grid, pos2, distance));
-            }
-            else if(SameRow(pos1, pos2)){
-                shift = String.valueOf(ShiftRight(grid, pos1, distance));
-                shift2 = String.valueOf(ShiftRight(grid, pos2, distance));
-            }
-            else{
-                shift = String.valueOf(grid[pos1[0]][pos2[1]]);
-                shift2 = String.valueOf(grid[pos2[0]][pos1[1]]);
-            }
-
-            decryptedMessage.add(shift + shift2);
         }
-
-        return String.join("", decryptedMessage);
+        return result.toString();
     }
 
-    public static char ShiftRight(char[][] grid, int[] pos, int distance){
-        int col = pos[1];
-        int newCol = (col + distance) % 5;
-        if(newCol < 0) newCol += 5;
+    public static char ShiftRight(char[][] grid, int[] pos, int distance) {
+        int newCol = (pos[1] + distance + 5) % 5;
         return grid[pos[0]][newCol];
     }
 
-    public static char ShiftDown(char[][] grid, int[] pos, int distance){
-        int row = pos[0];
-        int newRow = (row + distance) % 5;
-        if(newRow < 0) newRow += 5;
+    public static char ShiftDown(char[][] grid, int[] pos, int distance) {
+        int newRow = (pos[0] + distance + 5) % 5;
         return grid[newRow][pos[1]];
     }
 
-    public static void main(String[] args){
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
 
-        //Get Key
-        List<Character> key = CleanKey(GetKeyInput());
+        String rawKey = GetKeyInput(scanner);
+        List<Character> cleanKey = CleanKey(rawKey);
+        String oLetter = GetOmittedLetter(scanner);
+        String encryptedMessage = GetEncryptedMessage(scanner);
 
-        //Get Omitted Letter
-        String oLetter = GetOmittedLetter();
+        // Pre-process message to remove omitted letters
+        String fixedMessage = ReplaceLettersInMessage(encryptedMessage, oLetter);
+        List<String> digrams = DigramMessage(fixedMessage);
 
-        //Get Encrypted Message
-        String encryptedMessage = GetEncryptedMessage();
+        String newAlpha = RearrangeAlphabet(cleanKey, oLetter);
+        char[][] grid = PopulateGrid(newAlpha);
 
-        //Turn Encrypted Message Into a Digram
-        List<String> digram = DigramMessage(encryptedMessage);
-
-        //Arrange 5x5 Grid using Key and Omitted Letter
-        char[][] grid = PopulateGrid(RearrangeAlphabet(key, oLetter));
-        for(char[] row : grid){
+        System.out.println("\nCipher Grid:");
+        for (char[] row : grid) {
             System.out.println(Arrays.toString(row));
         }
 
-        //Decrypt Message
-        System.out.println(DecryptMessage(digram, grid));
+        System.out.print("\nDecrypted Message: ");
+        //System.out.println(DecryptMessage(digrams, grid));
+
+        scanner.close();
     }
 }

@@ -19,33 +19,16 @@ public class ChallengeMode {
     private Label hintLabel;
     private Label cipherKeyLabel;
     private Label decodedLabel;
+    private Button startBtn;
     private Button hint2Btn;
     private Button checkGridBtn;
     private Button submitDecodedBtn;
     private Button nextPuzzleBtn;
     private Button showAnswerBtn;
     private Button skipToDecodeBtn;
-    private Button backBtn;
     private TextArea decodedTextArea;
     private Label instructionLabel;
     private TitledPane howToPlayPane;
-
-    // FIX: Keep a direct reference to gridContainer so we never call getParent()
-    private VBox gridContainer;
-
-    // FIX: Keep a direct reference to dragInstruction so visibility can be toggled
-    private Label dragInstruction;
-
-    // Difficulty selection
-    private Button easyBtn;
-    private Button mediumBtn;
-    private Button hardBtn;
-    private Button startGameBtn;
-    private VBox difficultyBox;
-
-    // Button containers
-    private HBox gameButtonContainer;
-    private HBox decodeButtonContainer;
 
     private String currentEncodedMessage;
     private String correctKey;
@@ -58,42 +41,36 @@ public class ChallengeMode {
     private int wrongAttempts = 0;
     private int gridWrongAttempts = 0;
 
-    // FIX: Track drag source by data, not by label reference that can go stale
     private Label draggedLabel = null;
+    private double dragOffsetX, dragOffsetY;
     private int sourceRow = -1, sourceCol = -1;
-
-    // FIX: Store initial scene coords at drag start for accurate delta calculation
-    private double dragStartSceneX, dragStartSceneY;
-    private double dragStartTranslateX, dragStartTranslateY;
-
     private boolean[][] highlightedCells = new boolean[5][5];
 
     private int lastChallengeId = -1;
     private String currentDifficulty = "easy";
 
-    // FIX: Callback set by PlayfairUI to reset the ScrollPane to the top on phase changes
-    private Runnable scrollToTopAction;
-
     private final ChallengeRepository repo = new ChallengeRepository();
+
+    // Neon/Bright colors for grid highlighting,highly visible on dark background
+    private final String[] pairColors = {
+            "#FFFFFF",  // white
+            "#FF00FF",  // neon pink/magenta
+            "#00FFFF",  // cyan
+            "#FFFF00",  // neon yellow
+            "#FF4500",  // neon orange
+            "#00FF00",  // neon green
+            "#9B59B6",  // bright purple
+            "#FF1493",  // deep pink
+            "#00CED1",  // dark turquoise
+            "#FFA500",  // orange
+            "#7B68EE",  // medium purple
+            "#32CD32"   // lime green
+    };
 
     public ChallengeMode() {
         createChallengeView();
+        loadRandomPuzzle();
         updatePhase(1);
-    }
-
-    /**
-     * FIX: Called by PlayfairUI after construction to wire up scroll reset behavior.
-     * ChallengeMode does not need a direct reference to the ScrollPane.
-     */
-    public void setScrollToTopAction(Runnable action) {
-        this.scrollToTopAction = action;
-    }
-
-    /** Scroll the containing ScrollPane back to the top (safe to call from any phase). */
-    private void scrollToTop() {
-        if (scrollToTopAction != null) {
-            scrollToTopAction.run();
-        }
     }
 
     public void setDifficulty(String difficulty) {
@@ -102,20 +79,12 @@ public class ChallengeMode {
 
     private void loadRandomPuzzle() {
         try {
-            System.out.println("=== LOADING PUZZLE ===");
-            System.out.println("Difficulty: " + currentDifficulty);
-            System.out.println("Last Challenge ID: " + lastChallengeId);
-
             ChallengeRecord record = repo.getRandomChallengeByDifficulty(currentDifficulty, lastChallengeId);
 
             if (record == null) {
-                System.out.println("❌ Record is NULL!");
                 showAlert("No Challenges", "No challenges found for difficulty: " + currentDifficulty);
                 return;
             }
-
-            System.out.println("✅ Record found: " + record.getTitle());
-            System.out.println("   Grid ID: " + record.getGridId());
 
             lastChallengeId = record.getId();
             currentEncodedMessage = record.getCiphertext();
@@ -123,16 +92,15 @@ public class ChallengeMode {
             hint2 = record.getHint2();
             decodedAnswer = record.getAnswerKey();
 
-            String gridKey = repo.getGridKey(record.getGridId());
-            System.out.println("   Grid Key from database: " + gridKey);
-
+            // Fetch a grid key
+            String gridKey = repo.getRandomGridKey();
             if (gridKey == null) {
-                System.out.println("❌ Grid Key is NULL!");
-                showAlert("Error", "Could not find grid key for this challenge.");
+                showAlert("Error", "No grid keys found in database.");
                 return;
             }
             correctKey = gridKey;
 
+            // Build the correct grid
             String omitted = record.getOmittedLetter() != null ? record.getOmittedLetter() : "J";
             String cleanKeyStr = correctKey.toUpperCase().replaceAll("\\s+", "");
             List<Character> cleanKey = new ArrayList<>();
@@ -142,97 +110,77 @@ public class ChallengeMode {
             String rearrangedAlpha = PlayfairDecrypt.RearrangeAlphabet(cleanKey, omitted);
             correctGrid = PlayfairDecrypt.PopulateGrid(rearrangedAlpha);
 
+            // Update UI labels
             encodedMessageLabel.setText("🔐 Encoded: " + currentEncodedMessage);
             cipherKeyLabel.setText("🔑 Cipher Key: " + correctKey);
             hintLabel.setText("📌 Hint 1: " + hint1);
 
+            // Reset state
             wrongAttempts = 0;
             gridWrongAttempts = 0;
             hint2Shown = false;
             decodedTextArea.clear();
 
-            for (int r = 0; r < 5; r++) {
+            for (int r = 0; r < 5; r++)
                 for (int c = 0; c < 5; c++) {
                     highlightedCells[r][c] = false;
-                    applyDefaultCellStyle(r, c);
+                    resetGridCellStyle(r, c);
+                    gridLabels[r][c].getStyleClass().removeAll("highlighted", "cell-correct", "cell-wrong");
                 }
-            }
 
             if (skipToDecodeBtn != null) skipToDecodeBtn.setVisible(false);
 
-            System.out.println("✅ Puzzle loaded successfully!");
-            System.out.println("========================");
-
         } catch (Exception e) {
-            System.out.println("❌ ERROR in loadRandomPuzzle: " + e.getMessage());
-            e.printStackTrace();
             showAlert("Database Error", "Failed to load puzzle: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
-    /**
-     * FIX: Unified cell style reset using CSS classes only.
-     */
-    private void applyDefaultCellStyle(int row, int col) {
-        Label cell = gridLabels[row][col];
-        cell.setStyle("");
-        cell.getStyleClass().removeAll("highlighted", "cell-correct", "cell-wrong", "dragged");
-        if (!cell.getStyleClass().contains("glass-cell")) {
-            cell.getStyleClass().add("glass-cell");
-        }
-        if (highlightedCells[row][col]) {
-            cell.getStyleClass().add("highlighted");
-        }
+    private void resetGridCellStyle(int row, int col) {
+        gridLabels[row][col].setStyle(
+                "-fx-border-color: rgba(21, 147, 152, 0.4); " +
+                        "-fx-border-width: 2; " +
+                        "-fx-background-color: rgba(2, 31, 44, 0.7); " +
+                        "-fx-text-fill: white; " +
+                        "-fx-alignment: center; " +
+                        "-fx-font-size: 20px; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-background-radius: 16; " +
+                        "-fx-border-radius: 16;"
+        );
     }
 
     private void clearAllTempStyles() {
-        for (int r = 0; r < 5; r++) {
+        for (int r = 0; r < 5; r++)
             for (int c = 0; c < 5; c++) {
-                Label cell = gridLabels[r][c];
-                cell.setStyle("");
-                cell.getStyleClass().removeAll("cell-correct", "cell-wrong", "dragged");
+                resetGridCellStyle(r, c);
+                gridLabels[r][c].getStyleClass().removeAll("highlighted", "cell-correct", "cell-wrong");
             }
-        }
-    }
-
-    /**
-     * Helper: show or hide a node AND remove it from layout calculations.
-     * FIX: setVisible(false) alone still reserves space in the VBox, creating
-     * large invisible gaps. setManaged(false) tells the layout engine to ignore
-     * the node entirely, so it takes up zero height when hidden.
-     */
-    private static void setVisibleAndManaged(javafx.scene.Node node, boolean value) {
-        node.setVisible(value);
-        node.setManaged(value);
     }
 
     private void createChallengeView() {
         challengeView = new VBox(8);
-        challengeView.setPadding(new Insets(10));
+        challengeView.setPadding(new Insets(10, 15, 15, 15));
         challengeView.setAlignment(Pos.TOP_CENTER);
-        // FIX: Removed "glass-panel" style class — challengeView is already inside
-        // toolContent which has glass-panel. Having it on both causes double padding
-        // and a visible extra gap at the top of Challenge Mode.
+        challengeView.getStyleClass().add("glass-panel");
 
         Label title = new Label("CHALLENGE MODE");
         title.getStyleClass().add("glass-title");
-        title.setPadding(new Insets(0, 0, 5, 0));
 
-        // How to play collapsible section
+        // How to play section
         VBox howToContent = new VBox(10);
         howToContent.setPadding(new Insets(10));
         Label howToTitle = new Label("How to Play Playfair Challenge:");
         howToTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #E3F4EB; -fx-font-size: 14px;");
         String[] steps = {
-                "1. Choose your difficulty (Easy, Medium, or Hard)",
-                "2. Click START to begin",
-                "3. You are given the cipher key and an encoded message",
-                "4. Use the hints to figure out what the decoded message is",
-                "5. DRAG AND DROP letters to arrange the grid correctly",
-                "6. Click 'CHECK GRID' when you think it's correct",
-                "7. After 3 wrong attempts, 'SKIP TO DECODE' button appears",
-                "8. Pairs will light up in TEAL to help you decode",
-                "9. Type the decoded message and submit to complete!"
+                "1. You are given the cipher key and an encoded message",
+                "2. Use the hints to figure out what the decoded message is",
+                "3. Click START to see the scrambled grid",
+                "4. DRAG AND DROP letters to arrange the grid correctly",
+                "5. Click 'CHECK GRID' when you think it's correct",
+                "6. After 3 wrong attempts, 'SKIP TO DECODE' button appears",
+                "7. Pairs will light up in DIFFERENT NEON COLORS to help you decode",
+                "8. Type the decoded message and submit to complete!"
         };
         VBox stepsBox = new VBox(5);
         for (String step : steps) {
@@ -247,115 +195,31 @@ public class ChallengeMode {
         howToPlayPane.getStyleClass().add("glass-panel");
         howToPlayPane.setMaxHeight(Control.USE_PREF_SIZE);
 
-        // Difficulty selection
-        difficultyBox = new VBox(15);
-        difficultyBox.setAlignment(Pos.CENTER);
-        difficultyBox.setPadding(new Insets(20));
-        difficultyBox.setStyle("-fx-background-color: rgba(2, 31, 44, 0.5); -fx-background-radius: 20; -fx-border-color: rgba(21, 147, 152, 0.3); -fx-border-width: 1; -fx-border-radius: 20;");
-
-        Label difficultyTitle = new Label("CHOOSE YOUR DIFFICULTY");
-        difficultyTitle.setStyle("-fx-text-fill: #E3F4EB; -fx-font-weight: bold; -fx-font-size: 18px;");
-
-        HBox buttonRow = new HBox(20);
-        buttonRow.setAlignment(Pos.CENTER);
-
-        easyBtn = new Button("EASY");
-        mediumBtn = new Button("MEDIUM");
-        hardBtn = new Button("HARD");
-
-        easyBtn.getStyleClass().add("glass-action-button");
-        mediumBtn.getStyleClass().add("glass-action-button");
-        hardBtn.getStyleClass().add("glass-action-button");
-
-        String defaultStyle = "-fx-background-color: rgba(21, 147, 152, 0.4); -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 25; -fx-background-radius: 30; -fx-cursor: hand;";
-        String selectedStyle = "-fx-background-color: #159398; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 25; -fx-background-radius: 30; -fx-cursor: hand; -fx-effect: dropshadow(gaussian, rgba(21, 147, 152, 0.5), 15, 0, 0, 0);";
-
-        easyBtn.setStyle(selectedStyle);
-        mediumBtn.setStyle(defaultStyle);
-        hardBtn.setStyle(defaultStyle);
-
-        easyBtn.setOnAction(e -> {
-            easyBtn.setStyle(selectedStyle);
-            mediumBtn.setStyle(defaultStyle);
-            hardBtn.setStyle(defaultStyle);
-            currentDifficulty = "easy";
-        });
-        mediumBtn.setOnAction(e -> {
-            mediumBtn.setStyle(selectedStyle);
-            easyBtn.setStyle(defaultStyle);
-            hardBtn.setStyle(defaultStyle);
-            currentDifficulty = "medium";
-        });
-        hardBtn.setOnAction(e -> {
-            hardBtn.setStyle(selectedStyle);
-            easyBtn.setStyle(defaultStyle);
-            mediumBtn.setStyle(defaultStyle);
-            currentDifficulty = "hard";
-        });
-
-        buttonRow.getChildren().addAll(easyBtn, mediumBtn, hardBtn);
-
-        Label easyDesc = new Label("Easy: Simple words, obvious hints");
-        Label mediumDesc = new Label("Medium: Tricky keys, cryptic clues");
-        Label hardDesc = new Label("Hard: Expert mode, minimal hints");
-        easyDesc.setStyle("-fx-text-fill: #BDC7D0; -fx-font-size: 12px;");
-        mediumDesc.setStyle("-fx-text-fill: #BDC7D0; -fx-font-size: 12px;");
-        hardDesc.setStyle("-fx-text-fill: #BDC7D0; -fx-font-size: 12px;");
-
-        VBox descBox = new VBox(5);
-        descBox.setAlignment(Pos.CENTER);
-        descBox.getChildren().addAll(easyDesc, mediumDesc, hardDesc);
-
-        startGameBtn = new Button("START");
-        startGameBtn.getStyleClass().add("glass-action-button");
-        startGameBtn.setStyle("-fx-background-color: #2ECC71; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 12 40; -fx-background-radius: 30; -fx-font-size: 16px; -fx-cursor: hand;");
-        startGameBtn.setOnAction(e -> {
-            loadRandomPuzzle();
-            if (correctGrid != null) {
-                updatePhase(3);
-            }
-        });
-
-        difficultyBox.getChildren().addAll(difficultyTitle, buttonRow, descBox, startGameBtn);
-
-        instructionLabel = new Label("Choose your difficulty and click START!");
+        instructionLabel = new Label("Use the key and hints to decode the message!");
         instructionLabel.getStyleClass().add("glass-subtitle");
         instructionLabel.setMaxWidth(Double.MAX_VALUE);
         instructionLabel.setAlignment(Pos.CENTER);
         instructionLabel.setPadding(new Insets(5, 0, 5, 0));
 
+        // Encoded message label 
         encodedMessageLabel = new Label();
         encodedMessageLabel.getStyleClass().add("glass-subtitle");
         encodedMessageLabel.setMaxWidth(Double.MAX_VALUE);
         encodedMessageLabel.setAlignment(Pos.CENTER);
         encodedMessageLabel.setPadding(new Insets(5, 0, 5, 0));
-        // FIX: setManaged(false) prevents hidden nodes from taking up layout space
-        setVisibleAndManaged(encodedMessageLabel, false);
 
+        // Cipher key display label
         cipherKeyLabel = new Label();
         cipherKeyLabel.getStyleClass().add("glass-subtitle");
         cipherKeyLabel.setMaxWidth(Double.MAX_VALUE);
         cipherKeyLabel.setAlignment(Pos.CENTER);
         cipherKeyLabel.setStyle("-fx-text-fill: #159398; -fx-font-weight: bold; -fx-font-size: 16px;");
         cipherKeyLabel.setPadding(new Insets(5, 0, 5, 0));
-        // FIX: Same — remove from layout when hidden
-        setVisibleAndManaged(cipherKeyLabel, false);
 
-        hintLabel = new Label();
-        hintLabel.getStyleClass().add("glass-hint");
-        hintLabel.setMaxWidth(Double.MAX_VALUE);
-        hintLabel.setAlignment(Pos.CENTER);
-        hintLabel.setWrapText(true);
-        hintLabel.setPadding(new Insets(5, 0, 5, 0));
-        // FIX: Same
-        setVisibleAndManaged(hintLabel, false);
-
-        // FIX: Assign gridContainer to field — never use getParent() again
-        gridContainer = new VBox(10);
+        // Grid container
+        VBox gridContainer = new VBox(8);
         gridContainer.setAlignment(Pos.CENTER);
         gridContainer.setPadding(new Insets(5, 0, 5, 0));
-        // FIX: Same
-        setVisibleAndManaged(gridContainer, false);
 
         gridPane = new GridPane();
         gridPane.setHgap(8);
@@ -377,94 +241,100 @@ public class ChallengeMode {
             }
         }
 
-        // FIX: Assign dragInstruction to field so visibility can be controlled per phase
-        dragInstruction = new Label("✏️ Drag and drop letters to rearrange them");
-        dragInstruction.setStyle("-fx-text-fill: #159398; -fx-padding: 5; -fx-font-weight: bold");
+        Label dragInstruction = new Label("✏️ Drag and drop letters to rearrange them");
+        dragInstruction.setStyle("-fx-text-fill: #159398; -fx-padding: 5; -fx-font-size: 12px; -fx-font-weight: bold;");
         dragInstruction.setVisible(false);
-
         gridContainer.getChildren().addAll(gridPane, dragInstruction);
 
-        // Game buttons (Phase 3)
-        gameButtonContainer = new HBox(10);
-        gameButtonContainer.setAlignment(Pos.CENTER);
-        gameButtonContainer.setPadding(new Insets(10, 0, 10, 0));
-        // FIX: Same
-        setVisibleAndManaged(gameButtonContainer, false);
+        hintLabel = new Label();
+        hintLabel.getStyleClass().add("glass-hint");
+        hintLabel.setMaxWidth(Double.MAX_VALUE);
+        hintLabel.setAlignment(Pos.CENTER);
+        hintLabel.setWrapText(true);
+        hintLabel.setPadding(new Insets(5, 0, 5, 0));
+
+        // START button
+        startBtn = new Button("▶ START");
+        startBtn.getStyleClass().addAll("glass-action-button");
+        startBtn.setPadding(new Insets(8, 20, 8, 20));
+        startBtn.setOnAction(e -> updatePhase(3));
 
         hint2Btn = new Button("🔍 GET HINT 2");
-        hint2Btn.getStyleClass().add("glass-action-button");
+        hint2Btn.getStyleClass().addAll("glass-action-button");
+        hint2Btn.setPadding(new Insets(8, 20, 8, 20));
+        hint2Btn.setVisible(true);
 
         checkGridBtn = new Button("✅ CHECK GRID");
-        checkGridBtn.getStyleClass().add("glass-action-button");
+        checkGridBtn.getStyleClass().addAll("glass-action-button");
+        checkGridBtn.setPadding(new Insets(8, 20, 8, 20));
+        checkGridBtn.setVisible(false);
 
         skipToDecodeBtn = new Button("⏩ SKIP TO DECODE");
-        skipToDecodeBtn.getStyleClass().add("glass-action-button");
+        skipToDecodeBtn.getStyleClass().addAll("glass-action-button");
+        skipToDecodeBtn.setPadding(new Insets(8, 20, 8, 20));
+        skipToDecodeBtn.setVisible(false);
         skipToDecodeBtn.setOnAction(e -> {
             clearAllTempStyles();
             showAlert("Skipping", "Moving to decode phase...");
             updatePhase(4);
         });
 
-        backBtn = new Button("◀ BACK");
-        backBtn.getStyleClass().add("glass-action-button");
-        backBtn.setOnAction(e -> {
-            currentPhase = 1;
-            updatePhase(1);
-        });
-
-        gameButtonContainer.getChildren().addAll(hint2Btn, checkGridBtn, skipToDecodeBtn, backBtn);
-
-        // Decode buttons (Phase 4)
-        decodeButtonContainer = new HBox(10);
-        decodeButtonContainer.setAlignment(Pos.CENTER);
-        decodeButtonContainer.setPadding(new Insets(10, 0, 10, 0));
-        // FIX: Same
-        setVisibleAndManaged(decodeButtonContainer, false);
-
-        submitDecodedBtn = new Button("🎯 SUBMIT DECODED");
-        submitDecodedBtn.getStyleClass().add("glass-action-button");
-
-        showAnswerBtn = new Button("💡 SHOW ANSWER");
-        showAnswerBtn.getStyleClass().add("glass-action-button");
-
-        decodeButtonContainer.getChildren().addAll(submitDecodedBtn, showAnswerBtn);
-
+        // Decoded message section
         decodedLabel = new Label("Decoded Message:");
         decodedLabel.getStyleClass().add("glass-subtitle");
         decodedLabel.setPadding(new Insets(5, 0, 5, 0));
-        // FIX: Same
-        setVisibleAndManaged(decodedLabel, false);
+        decodedLabel.setVisible(false);
+        decodedLabel.setTranslateY(-50);
+
 
         decodedTextArea = new TextArea();
         decodedTextArea.setPromptText("Type the decoded message here (spaces optional)");
-        decodedTextArea.setPrefRowCount(3);
+        decodedTextArea.setPrefRowCount(2);
         decodedTextArea.setWrapText(true);
         decodedTextArea.getStyleClass().add("glass-text-area");
-        decodedTextArea.setMaxWidth(500);
-        decodedTextArea.setPrefHeight(80);
-        // FIX: Same
-        setVisibleAndManaged(decodedTextArea, false);
+        decodedTextArea.setVisible(false);
+        decodedTextArea.setMaxWidth(400);
+        decodedTextArea.setPrefHeight(60);
+        decodedTextArea.setTranslateY(-50);
+
+
+        submitDecodedBtn = new Button("🎯 SUBMIT DECODED");
+        submitDecodedBtn.getStyleClass().addAll("glass-action-button");
+        submitDecodedBtn.setPadding(new Insets(8, 20, 8, 20));
+        submitDecodedBtn.setVisible(false);
+        submitDecodedBtn.setTranslateX(80);
+        submitDecodedBtn.setTranslateY(-20);
+
+        showAnswerBtn = new Button("💡 SHOW ANSWER");
+        showAnswerBtn.getStyleClass().addAll("glass-action-button");
+        showAnswerBtn.setPadding(new Insets(8, 20, 8, 20));
+        showAnswerBtn.setVisible(false);
+        showAnswerBtn.setTranslateX(80);
+        showAnswerBtn.setTranslateY(-20);
 
         nextPuzzleBtn = new Button("NEXT PUZZLE ▶");
-        nextPuzzleBtn.getStyleClass().add("glass-action-button");
-        nextPuzzleBtn.setPadding(new Insets(10, 0, 10, 0));
-        // FIX: Same
-        setVisibleAndManaged(nextPuzzleBtn, false);
+        nextPuzzleBtn.getStyleClass().addAll("glass-action-button");
+        nextPuzzleBtn.setPadding(new Insets(8, 20, 8, 20));
+        nextPuzzleBtn.setVisible(false);
+        nextPuzzleBtn.setTranslateY(-150);
+
+        // Button containers
+        HBox buttonContainer = new HBox(10);
+        buttonContainer.setAlignment(Pos.CENTER);
+        buttonContainer.setPadding(new Insets(10, 0, 5, 0));
+        buttonContainer.getChildren().addAll(startBtn, hint2Btn, checkGridBtn, skipToDecodeBtn);
+
+        HBox decodeButtonContainer = new HBox(10);
+        decodeButtonContainer.setAlignment(Pos.CENTER);
+        decodeButtonContainer.setPadding(new Insets(5, 0, 5, 0));
+        decodeButtonContainer.getChildren().addAll(submitDecodedBtn, showAnswerBtn);
 
         challengeView.getChildren().addAll(
-                title,
-                howToPlayPane,
-                difficultyBox,
-                instructionLabel,
-                encodedMessageLabel,
-                cipherKeyLabel,
-                hintLabel,
-                gridContainer,
-                gameButtonContainer,
-                decodedLabel,
-                decodedTextArea,
-                decodeButtonContainer,
-                nextPuzzleBtn
+                title, howToPlayPane, instructionLabel,
+                encodedMessageLabel, cipherKeyLabel,
+                gridContainer, hintLabel,
+                buttonContainer,
+                decodedLabel, decodedTextArea, decodeButtonContainer, nextPuzzleBtn
         );
 
         hint2Btn.setOnAction(e -> showHint2());
@@ -474,7 +344,7 @@ public class ChallengeMode {
         showAnswerBtn.setOnAction(e -> showAnswer());
     }
 
-    // ─── DRAG AND DROP ────────────────────────────────────────────────────────
+    // DRAG AND DROP HANDLERS
 
     private void handleDragStart(MouseEvent e, Label label, int row, int col) {
         if (currentPhase != 3 || label.getText().equals("?")) return;
@@ -482,12 +352,8 @@ public class ChallengeMode {
         draggedLabel = label;
         sourceRow = row;
         sourceCol = col;
-
-        dragStartSceneX = e.getSceneX();
-        dragStartSceneY = e.getSceneY();
-        dragStartTranslateX = label.getTranslateX();
-        dragStartTranslateY = label.getTranslateY();
-
+        dragOffsetX = e.getX();
+        dragOffsetY = e.getY();
         label.getStyleClass().add("dragged");
         label.toFront();
         e.consume();
@@ -495,35 +361,30 @@ public class ChallengeMode {
 
     private void handleDrag(MouseEvent e, Label label) {
         if (currentPhase != 3 || draggedLabel == null) return;
-
-        double deltaX = e.getSceneX() - dragStartSceneX;
-        double deltaY = e.getSceneY() - dragStartSceneY;
-        label.setTranslateX(dragStartTranslateX + deltaX);
-        label.setTranslateY(dragStartTranslateY + deltaY);
-
+        double newX = e.getSceneX() - dragOffsetX - gridPane.getLocalToSceneTransform().getTx();
+        double newY = e.getSceneY() - dragOffsetY - gridPane.getLocalToSceneTransform().getTy();
+        label.setTranslateX(newX - label.getLayoutX());
+        label.setTranslateY(newY - label.getLayoutY());
         e.consume();
     }
 
     private void handleDragEnd(MouseEvent e, Label label, int row, int col) {
         if (currentPhase != 3 || draggedLabel == null) return;
-
         label.setTranslateX(0);
         label.setTranslateY(0);
 
         Label target = null;
         int tr = -1, tc = -1;
-        double dropX = e.getSceneX();
-        double dropY = e.getSceneY();
+        double dropX = e.getSceneX(), dropY = e.getSceneY();
 
         for (int r = 0; r < 5; r++) {
             for (int c = 0; c < 5; c++) {
-                Label candidate = gridLabels[r][c];
-                if (candidate == draggedLabel) continue;
-                javafx.geometry.Bounds bounds = candidate.localToScene(candidate.getBoundsInLocal());
-                double cx = bounds.getCenterX();
-                double cy = bounds.getCenterY();
-                if (Math.hypot(dropX - cx, dropY - cy) < (bounds.getWidth() / 2 + 10)) {
-                    target = candidate;
+                Label l = gridLabels[r][c];
+                if (l == draggedLabel) continue;
+                double cx = l.getLocalToSceneTransform().getTx() + l.getWidth() / 2;
+                double cy = l.getLocalToSceneTransform().getTy() + l.getHeight() / 2;
+                if (Math.hypot(dropX - cx, dropY - cy) < 50) {
+                    target = l;
                     tr = r;
                     tc = c;
                     break;
@@ -539,10 +400,10 @@ public class ChallengeMode {
         }
 
         draggedLabel.getStyleClass().remove("dragged");
-        applyDefaultCellStyle(sourceRow, sourceCol);
+        updateLabelStyle(draggedLabel, sourceRow, sourceCol);
         if (target != null) {
             target.getStyleClass().remove("dragged");
-            applyDefaultCellStyle(tr, tc);
+            updateLabelStyle(target, tr, tc);
         }
 
         draggedLabel = null;
@@ -551,61 +412,60 @@ public class ChallengeMode {
         e.consume();
     }
 
+    private void updateLabelStyle(Label label, int row, int col) {
+        label.getStyleClass().removeAll("glass-cell", "highlighted", "dragged");
+        label.getStyleClass().add("glass-cell");
+        if (isHighlighted(row, col)) label.getStyleClass().add("highlighted");
+    }
+
+    private boolean isHighlighted(int row, int col) {
+        return highlightedCells[row][col];
+    }
+
     private void showHint2() {
         hintLabel.setText("📌 Hint 1: " + hint1 + "\n📌 Hint 2: " + hint2);
         hint2Btn.setVisible(false);
         hint2Shown = true;
     }
 
-    // ─── PHASE MANAGEMENT ─────────────────────────────────────────────────────
-
+    // PHASE MANAGEMENT
     private void updatePhase(int phase) {
         currentPhase = phase;
 
-        // FIX: Always scroll back to top when the phase changes so the user
-        // sees the title/top of the view, not wherever they last scrolled to.
-        scrollToTop();
-
         switch (phase) {
             case 1:
-                setVisibleAndManaged(difficultyBox, true);
-                instructionLabel.setText("Choose your difficulty and click START!");
-                setVisibleAndManaged(encodedMessageLabel, false);
-                setVisibleAndManaged(cipherKeyLabel, false);
-                setVisibleAndManaged(gridContainer, false);
-                setVisibleAndManaged(hintLabel, false);
-                setVisibleAndManaged(gameButtonContainer, false);
-                setVisibleAndManaged(decodeButtonContainer, false);
-                setVisibleAndManaged(decodedLabel, false);
-                setVisibleAndManaged(decodedTextArea, false);
-                setVisibleAndManaged(nextPuzzleBtn, false);
+                instructionLabel.setText("Use the key and hints to decode the message!");
+                hintLabel.setText("📌 Hint 1: " + hint1);
+                cipherKeyLabel.setVisible(true);
+                startBtn.setVisible(true);
+                hint2Btn.setVisible(true);
+                hint2Btn.setDisable(false);
+                checkGridBtn.setVisible(false);
+                skipToDecodeBtn.setVisible(false);
+                decodedLabel.setVisible(false);
+                decodedTextArea.setVisible(false);
+                submitDecodedBtn.setVisible(false);
+                showAnswerBtn.setVisible(false);
+                nextPuzzleBtn.setVisible(false);
                 break;
 
             case 3:
-                if (correctGrid == null) {
-                    showAlert("Error", "Failed to load puzzle. Please try again.");
-                    return;
-                }
-                setVisibleAndManaged(difficultyBox, false);
                 instructionLabel.setText("Arrange the grid correctly using the key: " + correctKey);
-                setVisibleAndManaged(encodedMessageLabel, true);
-                setVisibleAndManaged(cipherKeyLabel, true);
-                setVisibleAndManaged(gridContainer, true);
-                dragInstruction.setVisible(true);
-                setVisibleAndManaged(hintLabel, true);
-                setVisibleAndManaged(gameButtonContainer, true);
+                hintLabel.setText(hint2Shown
+                        ? "📌 Hint 1: " + hint1 + "\n📌 Hint 2: " + hint2
+                        : "📌 Hint 1: " + hint1);
+                startBtn.setVisible(false);
                 hint2Btn.setVisible(true);
                 checkGridBtn.setVisible(true);
                 skipToDecodeBtn.setVisible(false);
-                backBtn.setVisible(true);
-                setVisibleAndManaged(decodeButtonContainer, false);
-                setVisibleAndManaged(decodedLabel, false);
-                setVisibleAndManaged(decodedTextArea, false);
-                setVisibleAndManaged(nextPuzzleBtn, false);
+                decodedLabel.setVisible(false);
+                decodedTextArea.setVisible(false);
+                submitDecodedBtn.setVisible(false);
+                showAnswerBtn.setVisible(false);
+                nextPuzzleBtn.setVisible(false);
                 gridWrongAttempts = 0;
                 clearAllTempStyles();
 
-                // Shuffle grid letters
                 List<String> letters = new ArrayList<>();
                 for (int r = 0; r < 5; r++)
                     for (int c = 0; c < 5; c++)
@@ -622,28 +482,30 @@ public class ChallengeMode {
                 hintLabel.setText(hint2Shown
                         ? "📌 Hint 1: " + hint1 + "\n📌 Hint 2: " + hint2
                         : "📌 Hint 1: " + hint1);
-                setVisibleAndManaged(gridContainer, true);
-                dragInstruction.setVisible(false);
-                setVisibleAndManaged(gameButtonContainer, false);
-                setVisibleAndManaged(decodeButtonContainer, true);
+                startBtn.setVisible(false);
+                hint2Btn.setVisible(false);
+                checkGridBtn.setVisible(false);
+                skipToDecodeBtn.setVisible(false);
+                decodedLabel.setVisible(true);
+                decodedTextArea.setVisible(true);
                 submitDecodedBtn.setVisible(true);
                 showAnswerBtn.setVisible(false);
-                backBtn.setVisible(true);
-                setVisibleAndManaged(decodedLabel, true);
-                setVisibleAndManaged(decodedTextArea, true);
-                setVisibleAndManaged(nextPuzzleBtn, false);
+                nextPuzzleBtn.setVisible(false);
                 decodedTextArea.clear();
-                highlightPairs();
+                highlightGridPairs();
                 break;
 
             case 5:
                 instructionLabel.setText("🎉 Challenge Complete! Great job!");
-                setVisibleAndManaged(decodedLabel, false);
-                setVisibleAndManaged(decodedTextArea, false);
-                setVisibleAndManaged(decodeButtonContainer, false);
-                setVisibleAndManaged(gameButtonContainer, false);
-                backBtn.setVisible(false);
-                setVisibleAndManaged(nextPuzzleBtn, true);
+                startBtn.setVisible(false);
+                hint2Btn.setVisible(false);
+                checkGridBtn.setVisible(false);
+                skipToDecodeBtn.setVisible(false);
+                decodedLabel.setVisible(false);
+                decodedTextArea.setVisible(false);
+                submitDecodedBtn.setVisible(false);
+                showAnswerBtn.setVisible(false);
+                nextPuzzleBtn.setVisible(true);
                 clearAllTempStyles();
                 for (int r = 0; r < 5; r++)
                     for (int c = 0; c < 5; c++) {
@@ -655,16 +517,9 @@ public class ChallengeMode {
         }
     }
 
-    // ─── PHASE 3: CHECK GRID ─────────────────────────────────────────────────
-
+    // PHASE 3: CHECK GRID
     private void checkGrid() {
-        for (int r = 0; r < 5; r++) {
-            for (int c = 0; c < 5; c++) {
-                gridLabels[r][c].setStyle("");
-                gridLabels[r][c].getStyleClass().removeAll("cell-correct", "cell-wrong");
-            }
-        }
-
+        clearAllTempStyles();
         boolean correct = true;
 
         for (int r = 0; r < 5; r++) {
@@ -673,9 +528,17 @@ public class ChallengeMode {
                 String expected = String.valueOf(correctGrid[r][c]);
                 if (!text.equals(expected)) {
                     correct = false;
-                    gridLabels[r][c].getStyleClass().add("cell-wrong");
+                    gridLabels[r][c].setStyle(
+                            "-fx-background-color: rgba(231, 76, 60, 0.3); " +
+                                    "-fx-border-color: #E74C3C; -fx-border-width: 2; " +
+                                    "-fx-font-size: 20px; -fx-font-weight: bold;"
+                    );
                 } else {
-                    gridLabels[r][c].getStyleClass().add("cell-correct");
+                    gridLabels[r][c].setStyle(
+                            "-fx-background-color: rgba(46, 204, 113, 0.3); " +
+                                    "-fx-border-color: #27AE60; -fx-border-width: 2; " +
+                                    "-fx-font-size: 20px; -fx-font-weight: bold;"
+                    );
                 }
             }
         }
@@ -695,33 +558,58 @@ public class ChallengeMode {
         }
     }
 
-    // ─── PHASE 4: HIGHLIGHT PAIRS ─────────────────────────────────────────────
-
-    private void highlightPairs() {
+    // PHASE 4: HIGHLIGHT GRID CELLS BASED ON ENCODED MESSAGE PAIRS
+    private void highlightGridPairs() {
         String[] pairs = currentEncodedMessage.split(" ");
 
+        // Clear all existing highlights and styles
         for (int r = 0; r < 5; r++) {
             for (int c = 0; c < 5; c++) {
                 highlightedCells[r][c] = false;
                 gridLabels[r][c].getStyleClass().removeAll("highlighted");
-                applyDefaultCellStyle(r, c);
+                resetGridCellStyle(r, c);
             }
         }
 
-        for (String pair : pairs) {
+        // Highlight each pair with a different neon color
+        for (int pairIndex = 0; pairIndex < pairs.length; pairIndex++) {
+            String pair = pairs[pairIndex];
             if (pair.length() == 2) {
                 int[] p1 = findLetter(pair.charAt(0));
                 int[] p2 = findLetter(pair.charAt(1));
+
                 if (p1 != null && p2 != null) {
                     highlightedCells[p1[0]][p1[1]] = true;
                     highlightedCells[p2[0]][p2[1]] = true;
-                    if (!gridLabels[p1[0]][p1[1]].getStyleClass().contains("highlighted"))
-                        gridLabels[p1[0]][p1[1]].getStyleClass().add("highlighted");
-                    if (!gridLabels[p2[0]][p2[1]].getStyleClass().contains("highlighted"))
-                        gridLabels[p2[0]][p2[1]].getStyleClass().add("highlighted");
+
+                    // Get color for this pair (cycle through colors)
+                    String color = pairColors[pairIndex % pairColors.length];
+                    String rgbColor = hexToRgb(color);
+
+                    // Apply different neon color for each pair
+                    String highlightStyle = "-fx-background-color: rgba(" + rgbColor + ", 0.4); " +
+                            "-fx-border-color: " + color + "; " +
+                            "-fx-border-width: 3; " +
+                            "-fx-font-size: 20px; " +
+                            "-fx-font-weight: bold;";
+
+                    gridLabels[p1[0]][p1[1]].setStyle(highlightStyle);
+                    gridLabels[p2[0]][p2[1]].setStyle(highlightStyle);
+
+                    // Add CSS class for any additional styling
+                    gridLabels[p1[0]][p1[1]].getStyleClass().add("highlighted");
+                    gridLabels[p2[0]][p2[1]].getStyleClass().add("highlighted");
                 }
             }
         }
+    }
+
+    // Helper method to convert hex color to RGB string
+    private String hexToRgb(String hex) {
+        int r = Integer.parseInt(hex.substring(1, 3), 16);
+        int g = Integer.parseInt(hex.substring(3, 5), 16);
+        int b = Integer.parseInt(hex.substring(5, 7), 16);
+        return r + ", " + g + ", " + b;
     }
 
     private int[] findLetter(char letter) {
@@ -753,8 +641,7 @@ public class ChallengeMode {
         showAlert("Answer", "The decoded message is: " + decodedAnswer);
     }
 
-    // ─── PHASE 5: NEXT PUZZLE ─────────────────────────────────────────────────
-
+    // PHASE 5: NEXT PUZZLE
     private void nextPuzzle() {
         clearAllTempStyles();
         for (int r = 0; r < 5; r++)
@@ -762,7 +649,8 @@ public class ChallengeMode {
                 highlightedCells[r][c] = false;
                 gridLabels[r][c].getStyleClass().removeAll("highlighted");
             }
-        correctGrid = null;
+        loadRandomPuzzle();
+        currentPhase = 1;
         wrongAttempts = 0;
         gridWrongAttempts = 0;
         hint2Shown = false;

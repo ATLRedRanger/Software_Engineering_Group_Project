@@ -606,12 +606,3 @@ public class PlayfairUI extends Application {
         launch(args);
     }
 }
-
-
-
-
-
-
-
-
-
